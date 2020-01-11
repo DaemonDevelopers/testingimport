@@ -102,6 +102,9 @@ void Tess_StageIteratorSky()
 
 	gl_skyboxShader->SetUniform_ModelViewProjectionMatrix( glState.modelViewProjectionMatrix[glState.stackIndex] );
 
+	// u_LinearizeTexture
+	gl_skyboxShader->SetUniform_LinearizeTexture( tr.worldLinearizeTexture );
+
 	gl_skyboxShader->SetRequiredVertexPointers();
 
 	// draw the outer skybox
@@ -160,6 +163,9 @@ void Tess_StageIteratorSky()
 
 		// u_AlphaThreshold
 		gl_skyboxShader->SetUniform_AlphaTest( pStage->stateBits );
+
+		// u_LinearizeTexture
+		gl_skyboxShader->SetUniform_LinearizeTexture( tr.worldLinearizeTexture );
 
 		GL_State( pStage->stateBits );
 

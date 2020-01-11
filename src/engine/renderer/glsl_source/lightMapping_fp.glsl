@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 /* lightMapping_fp.glsl */
 
 #insert common
+#insert colorSpace
 #insert computeLight_fp
 #insert reliefMapping_fp
 
@@ -101,13 +102,25 @@ void main()
 	vec4 diffuse = texture2D(u_DiffuseMap, texCoords);
 
 	// Apply vertex blend operation like: alphaGen vertex.
-	diffuse *= var_Color;
+	diffuse.a *= var_Color.a;
 
 	if(abs(diffuse.a + u_AlphaThreshold) <= 1.0)
 	{
 		discard;
 		return;
 	}
+
+	/* HACK: emulate three-bits bitfield
+	even: no color map linearization (first bit)
+	less than 2: no light map linearization (second bit)
+	positive: no material map linearization (extra bit) */
+	bool linearizeColorMap = bool(u_LinearizeTexture % 2);
+	bool linearizeLightMap = abs(u_LinearizeTexture) > 1;
+	bool linearizeMaterialMap = u_LinearizeTexture < 0;
+
+	convertFromSRGB(diffuse.rgb, linearizeColorMap);
+
+	diffuse.rgb *= var_Color.rgb;
 
 	// Compute normal in world space from normalmap.
 	#if defined(r_normalMapping)
@@ -119,6 +132,8 @@ void main()
 	#if defined(r_specularMapping) || defined(r_physicalMapping)
 		// Compute the material term.
 		vec4 material = texture2D(u_MaterialMap, texCoords);
+
+		convertFromSRGB(material.rgb, linearizeMaterialMap);
 	#elif ( defined(r_realtimeLighting) && r_realtimeLightingRenderer == 1 )\
 		|| defined( USE_DELUXE_MAPPING ) || defined(USE_GRID_DELUXE_MAPPING )
 		// The computeDynamicLights function requires this variable to exist.
@@ -152,11 +167,21 @@ void main()
 		vec3 lightColor = texture2D(u_LightMap, var_TexLight).rgb;
 		lightColor *= lightFactor;
 
+		convertFromSRGB(lightColor, linearizeLightMap);
+
 		color.rgb = vec3(0.0);
 	#else
 		// Compute light color from lightgrid.
 		vec3 ambientColor, lightColor;
 		ReadLightGrid(texture3D(u_LightGrid1, lightGridPos), lightFactor, ambientColor, lightColor);
+
+		#if defined(r_cheapSRGB)
+			/* The light grid conversion from sRGB is done in C++ code
+			when loading it, meaning it's done before interpolation. */
+		#else
+			convertFromSRGB(lightColor, linearizeLightMap);
+			convertFromSRGB(ambientColor, linearizeLightMap);
+		#endif
 
 		color.rgb = ambientColor * r_AmbientScale * diffuse.rgb;
 	#endif
@@ -214,6 +239,8 @@ void main()
 	#if defined(r_glowMapping)
 		// Blend glow map.
 		vec3 glow = texture2D(u_GlowMap, texCoords).rgb;
+
+		convertFromSRGB(glow, linearizeColorMap);
 
 		color.rgb += glow;
 	#endif

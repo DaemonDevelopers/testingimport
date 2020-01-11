@@ -22,6 +22,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 /* fogGlobal_fp.glsl */
 
+#insert colorSpace
+
 uniform sampler2D	u_ColorMap; // fog texture
 uniform sampler2D	u_DepthMap;
 
@@ -51,6 +53,8 @@ void	main()
 	st.t = 1.0;
 
 	vec4 color = texture2D(u_ColorMap, st);
+
+	convertFromSRGB(color.rgb, u_LinearizeTexture);
 
 	outputColor = unpackUnorm4x8( u_Color ) * color;
 }

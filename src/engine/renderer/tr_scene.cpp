@@ -334,6 +334,14 @@ void RE_AddDynamicLightToSceneET( const vec3_t org, float radius, float intensit
 	light->l.color[ 1 ] = g;
 	light->l.color[ 2 ] = b;
 
+	// Linearize dynamic lights.
+	if ( tr.worldLinearizeTexture )
+	{
+		light->l.color[ 0 ] = convertFromSRGB( light->l.color[ 0 ] );
+		light->l.color[ 1 ] = convertFromSRGB( light->l.color[ 1 ] );
+		light->l.color[ 2 ] = convertFromSRGB( light->l.color[ 2 ] );
+	}
+
 	light->l.inverseShadows = (flags & REF_INVERSE_DLIGHT) != 0;
 	light->l.noShadows = !r_realtimeLightingCastShadows->integer && !light->l.inverseShadows;
 

@@ -22,8 +22,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 /* cameraEffects_fp.glsl */
 
+#insert colorSpace
+
 uniform sampler2D u_CurrentMap;
 
+uniform bool u_DelinearizeScreen;
 #if defined(r_colorGrading)
 uniform sampler3D u_ColorMap3D;
 #endif
@@ -41,6 +44,8 @@ void	main()
 	vec2 st = gl_FragCoord.st / r_FBufSize;
 
 	vec4 color = texture2D(u_CurrentMap, st);
+
+	convertToSRGB(color.rgb, u_DelinearizeScreen);
 
 	color = clamp(color, 0.0, 1.0);
 

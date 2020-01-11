@@ -22,6 +22,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 /* skybox_fp.glsl */
 
+#insert colorSpace
+
 #define SKYBOX_GLSL
 
 const float radiusWorld = 4096.0; // Value used by quake 3 skybox code
@@ -77,6 +79,8 @@ void	main()
 		discard;
 		return;
 	}
+
+	convertFromSRGB(color.rgb, u_LinearizeTexture);
 
 	outputColor = color;
 }

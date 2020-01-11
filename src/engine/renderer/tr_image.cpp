@@ -3095,15 +3095,6 @@ void R_InitImages()
 	Mappers may port and fix maps by multiplying the lights by 2.5
 	and set the mapOverBrightBits key to 0 in map entities lump.
 
-	It will be possible to assume tr.mapOverBrightBits is 0 when
-	loading maps compiled with sRGB lightmaps as there is no
-	legacy map using sRGB lightmap yet, and then we will be
-	able to avoid the need to explicitly set mapOverBrightBits
-	to 0 in map entities. It will be required to assume that
-	tr.mapOverBrightBits is 0 when loading maps compiled with
-	sRGB lightmaps because otherwise the color shift computation
-	will break the light computation, not only the deluxe one.
-
 	In legacy engines, tr.overbrightBits was non-zero when
 	hardware overbright bits were enabled, zero when disabled.
 	This engine do not implement hardware overbright bit, so
