@@ -51,6 +51,43 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/file.h>
 #endif
 
+#if defined(DAEMON_USE_FLOAT_EXCEPTIONS)
+	#if defined(__USE_GNU) || defined(__FreeBSD__)
+		#if defined(DAEMON_ARCH_amd64) || defined(DAEMON_ARCH_i686)
+			#include <cfenv>
+			#define DAEMON_USE_FLOAT_EXCEPTIONS_AVAILABLE
+		#endif
+	#elif defined (__APPLE__)
+		#if defined(DAEMON_ARCH_amd64) || defined(DAEMON_ARCH_arm64)
+			#include <cfenv>
+			#include <csignal>
+			#define DAEMON_USE_FLOAT_EXCEPTIONS_AVAILABLE
+		#endif
+	#elif defined(_WIN32)
+		#if defined(DAEMON_ARCH_amd64) || defined(DAEMON_ARCH_i686)
+			#include <cfloat>
+			#include <cfenv>
+			#define DAEMON_USE_FLOAT_EXCEPTIONS_AVAILABLE
+		#endif
+	#endif
+#endif
+
+#if defined(DAEMON_USE_FLOAT_EXCEPTIONS) && !defined(DAEMON_USE_FLOAT_EXCEPTIONS_AVAILABLE)
+	#warning Missing floating point exception implementation.
+#endif
+
+#if defined(DAEMON_USE_FLOAT_EXCEPTIONS_AVAILABLE)
+	static Cvar::Cvar<bool> common_floatExceptions_invalid("common.floatExceptions.invalid",
+		"enable floating point exception for operation with NaN",
+		Cvar::INIT, false);
+	static Cvar::Cvar<bool> common_floatExceptions_divByZero("common.floatExceptions.divByZero",
+		"enable floating point exception for division-by-zero operation",
+		Cvar::INIT, false);
+	static Cvar::Cvar<bool> common_floatExceptions_overflow("common.floatExceptions.overflow",
+		"enable floating point exception for operation producing an overflow",
+		Cvar::INIT, false);
+#endif
+
 namespace Sys {
 static Cvar::Cvar<bool> cvar_common_shutdownOnDrop("common.shutdownOnDrop", "shut down engine on game drop", Cvar::TEMPORARY, false);
 
@@ -352,6 +389,144 @@ static void CloseSingletonSocket()
 	try {
 		FS::HomePath::DeleteFile(std::string("lock") + Application::GetTraits().uniqueHomepathSuffix);
 	} catch (std::system_error&) {}
+#endif
+}
+
+#if defined(DAEMON_USE_FLOAT_EXCEPTIONS_AVAILABLE) && defined(__APPLE__)
+static void FloatingPointExceptionSignalHandler(int /* sig */, siginfo_t *sip, void* /* scp */)
+{
+#if defined(DAEMON_ARCH_arm64)
+	if (sip->si_code == ILL_ILLTRP)
+	{
+		Sys::Error( "Illegal trap" );
+	}
+#endif
+
+	Sys::Error( "Floating point exception" );
+}
+#endif
+
+static void SetFloatingPointExceptions()
+{
+#if defined(DAEMON_USE_FLOAT_EXCEPTIONS_AVAILABLE)
+	#if defined(DAEMON_ARCH_amd64) || defined(DAEMON_ARCH_i686)
+		#if defined(__USE_GNU) || defined(__FreeBSD__) || defined(__APPLE__)
+			int exceptions = 0;
+		#elif defined(_WIN32)
+			unsigned int exceptions = 0;
+		#endif
+
+		#if defined(DAEMON_USE_ARCH_INTRINSICS_i686_sse)
+			int sse_exceptions = 0;
+		#endif
+	#elif defined(DAEMON_ARCH_arm64)
+		#if defined(__APPLE__)
+			int arm_exceptions = 0;
+		#endif
+	#endif
+
+	// Operations with NaN.
+	if (common_floatExceptions_invalid.Get())
+	{
+		#if defined(DAEMON_ARCH_amd64) || defined(DAEMON_ARCH_i686)
+			#if defined(__USE_GNU) || defined(__FreeBSD__) || defined(__APPLE__)
+				exceptions |= FE_INVALID;
+			#elif defined(_WIN32)
+				exceptions |= _EM_INVALID;
+			#endif
+
+			#if defined(DAEMON_USE_ARCH_INTRINSICS_i686_sse)
+				sse_exceptions |= _MM_MASK_INVALID;
+			#endif
+		#elif defined(DAEMON_ARCH_arm64)
+			#if defined(__APPLE__)
+				arm_exceptions |= __fpcr_trap_invalid;
+			#endif
+		#endif
+	}
+
+	// Division by zero.
+	if (common_floatExceptions_divByZero.Get())
+	{
+		#if defined(DAEMON_ARCH_amd64) || defined(DAEMON_ARCH_i686)
+			#if defined(__USE_GNU) || defined(__FreeBSD__) || defined(__APPLE__)
+				exceptions |= FE_DIVBYZERO;
+			#elif defined(_WIN32)
+				exceptions |= _EM_ZERODIVIDE;
+			#endif
+
+			#if defined(DAEMON_USE_ARCH_INTRINSICS_i686_sse)
+				sse_exceptions |= _MM_MASK_DIV_ZERO;
+			#endif
+		#elif defined(DAEMON_ARCH_arm64)
+			#if defined(__APPLE__)
+				arm_exceptions |= __fpcr_trap_divbyzero;
+			#endif
+		#endif
+	}
+
+	// Operations producing an overflow.
+	if (common_floatExceptions_overflow.Get())
+	{
+		#if defined(DAEMON_ARCH_amd64) || defined(DAEMON_ARCH_i686)
+			#if defined(__USE_GNU) || defined(__FreeBSD__) || defined(__APPLE__)
+				exceptions |= FE_OVERFLOW;
+			#elif defined(_WIN32)
+				exceptions |= _EM_OVERFLOW;
+			#endif
+
+			#if defined(DAEMON_USE_ARCH_INTRINSICS_i686_sse)
+				sse_exceptions |= _MM_MASK_OVERFLOW;
+			#endif
+		#elif defined(DAEMON_ARCH_arm64)
+			#if defined(__APPLE__)
+				arm_exceptions |= __fpcr_trap_overflow;
+			#endif
+		#endif
+	}
+
+	#if defined(DAEMON_ARCH_amd64) || defined(DAEMON_ARCH_i686)
+		#if defined(__USE_GNU) || defined(__FreeBSD__)
+			// https://www.gnu.org/savannah-checkouts/gnu/libc/manual/html_node/Control-Functions.html
+			feenableexcept(exceptions);
+		#elif defined(_WIN32)
+			// https://learn.microsoft.com/en-us/previous-versions/visualstudio/visual-studio-2012/c9676k6h(v=vs.110)
+			unsigned int current = 0;
+			_controlfp_s(&current, ~exceptions, _MCW_EM);
+		#endif
+	#endif
+
+	#if defined(__APPLE__)
+		// https://stackoverflow.com/a/15302624
+		// https://stackoverflow.com/a/71792418
+		fenv_t env;
+		fegetenv( &env );
+
+		#if defined(DAEMON_ARCH_amd64)
+			env.__control &= ~exceptions;
+			env.__mxcsr &= ~sse_exceptions;
+		#elif defined(DAEMON_ARCH_arm64)
+			env.__fpcr |= arm_exceptions;
+		#endif
+
+		fesetenv( &env );
+
+		struct sigaction act;
+		act.sa_sigaction = FloatingPointExceptionSignalHandler;
+		sigemptyset( &act.sa_mask );
+		act.sa_flags = SA_SIGINFO;
+
+		#if defined(DAEMON_ARCH_amd64)
+			sigaction(SIGFPE, &act, NULL);
+		#elif defined(DAEMON_ARCH_arm64)
+			sigaction(SIGILL, &act, NULL);
+		#endif
+	#endif
+
+	// Superfluous on some systems, but always safe to do.
+	#if defined(DAEMON_USE_ARCH_INTRINSICS_i686_sse)
+		_MM_SET_EXCEPTION_MASK(_MM_GET_EXCEPTION_MASK() & ~sse_exceptions);
+	#endif
 #endif
 }
 
@@ -746,6 +921,8 @@ static void Init(int argc, char** argv)
 
 	// Set cvars set from the command line having the Cvar::INIT flag
 	SetCvarsWithInitFlag(cmdlineArgs);
+
+	SetFloatingPointExceptions();
 
 	// Initialize the filesystem. For pakpaths, the libpath is added first and has the
 	// lowest priority, while the homepath is added last and has the highest.
