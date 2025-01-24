@@ -65,7 +65,7 @@ sharedEntity_t *SV_GentityNum( int num )
 
 OpaquePlayerState *SV_GameClientNum( int num )
 {
-	if ( num < 0 || num >= sv_maxclients->integer || sv.gameClients == nullptr )
+	if ( num < 0 || num >= sv_maxClients.Get() || sv.gameClients == nullptr )
 	{
 		Sys::Drop( "SV_GameClientNum: bad num" );
 	}
@@ -102,7 +102,7 @@ void SV_GameSendServerCommand( int clientNum, const char *text )
 	}
 	else
 	{
-		if ( clientNum < 0 || clientNum >= sv_maxclients->integer )
+		if ( clientNum < 0 || clientNum >= sv_maxClients.Get() )
 		{
 			return;
 		}
@@ -120,7 +120,7 @@ Disconnects the client with a message
 */
 void SV_GameDropClient( int clientNum, const char *reason )
 {
-	if ( clientNum < 0 || clientNum >= sv_maxclients->integer )
+	if ( clientNum < 0 || clientNum >= sv_maxClients.Get() )
 	{
 		return;
 	}
@@ -191,7 +191,7 @@ void SV_LocateGameData( const IPC::SharedMemory& shmRegion, int numGEntities, in
 	if ( numGEntities < 0 || numGEntities > MAX_GENTITIES || sizeofGEntity_t < 0 || sizeofGameClient < 0
 	     || sizeofGEntity_t % alignof(sharedEntity_t) || sizeofGEntity_t % playerStateAlignment )
 		Sys::Drop( "SV_LocateGameData: Invalid game data parameters" );
-	if ( int64_t(shmRegion.GetSize()) < int64_t(MAX_GENTITIES) * sizeofGEntity_t + int64_t(sv_maxclients->integer) * sizeofGameClient )
+	if ( int64_t(shmRegion.GetSize()) < int64_t(MAX_GENTITIES) * sizeofGEntity_t + int64_t(sv_maxClients.Get()) * sizeofGameClient )
 		Sys::Drop( "SV_LocateGameData: Shared memory region too small" );
 
 	char* base = static_cast<char*>(shmRegion.GetBase());
@@ -217,7 +217,7 @@ SV_GetUsercmd
 */
 void SV_GetUsercmd( int clientNum, usercmd_t *cmd )
 {
-	if ( clientNum < 0 || clientNum >= sv_maxclients->integer )
+	if ( clientNum < 0 || clientNum >= sv_maxClients.Get() )
 	{
 		Sys::Drop( "SV_GetUsercmd: bad clientNum:%i", clientNum );
 	}
@@ -282,7 +282,7 @@ static void SV_InitGameVM()
 
 	// clear all gentity pointers that might still be set from
 	// a previous level
-	for ( i = 0; i < sv_maxclients->integer; i++ )
+	for ( i = 0; i < sv_maxClients.Get(); i++ )
 	{
 		svs.clients[ i ].gentity = nullptr;
 	}

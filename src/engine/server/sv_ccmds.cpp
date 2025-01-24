@@ -192,7 +192,7 @@ static void SV_MapRestart_f()
 	sv.restarting = false;
 
 	// connect and begin all the clients
-	for ( i = 0; i < sv_maxclients->integer; i++ )
+	for ( i = 0; i < sv_maxClients.Get(); i++ )
 	{
 		client = &svs.clients[ i ];
 
@@ -260,7 +260,7 @@ public:
 
 		auto players = std::count_if(
 			svs.clients,
-			svs.clients+sv_maxclients->integer,
+			svs.clients+sv_maxClients.Get(),
 			[](const client_t& cl) {
 				return cl.state != clientState_t::CS_FREE;
 			}
@@ -293,10 +293,10 @@ public:
 			time_string,
 			sv_mapname->string,
 			players,
-			sv_maxclients->integer
+			sv_maxClients.Get()
 		);
 
-		for ( int i = 0; i < sv_maxclients->integer; i++ )
+		for ( int i = 0; i < sv_maxClients.Get(); i++ )
 		{
 			const client_t& cl = svs.clients[i];
 			if ( cl.state == clientState_t::CS_FREE )
