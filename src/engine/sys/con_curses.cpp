@@ -441,14 +441,6 @@ char *CON_Input()
 		return CON_Input_TTY();
 	}
 
-    /*
-	if ( com_ansiColor->modified )
-	{
-		CON_Redraw();
-		com_ansiColor->modified = false;
-	}
-    */
-
 	if ( Com_Time( nullptr ) != lasttime )
 	{
 		lasttime = Com_Time( nullptr );

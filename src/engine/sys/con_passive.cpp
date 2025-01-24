@@ -70,8 +70,5 @@ CON_Print
 */
 void CON_Print_TTY( const char *msg )
 {
-	//if( com_ansiColor && com_ansiColor->integer )
-	//  Sys_AnsiColorPrint( msg );
-	//else
 	fputs( msg, stderr );
 }

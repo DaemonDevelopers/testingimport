@@ -34,8 +34,10 @@ Maryland 20850 USA.
 #include "common/Common.h"
 #include "con_common.h"
 
-Cvar::Cvar<bool> com_ansiColor("com_ansiColor", "", Cvar::NONE, true);
-Cvar::Cvar<std::string> com_consoleCommand("com_consoleCommand", "", Cvar::NONE, "");
+Cvar::Cvar<bool> com_ansiColor(
+    "com_ansiColor", "use colors in tty/curses console output", Cvar::NONE, true);
+Cvar::Cvar<std::string> com_consoleCommand(
+    "com_consoleCommand", "command prepended to inputs from tty/curses console", Cvar::NONE, "");
 
 namespace Color {
 
