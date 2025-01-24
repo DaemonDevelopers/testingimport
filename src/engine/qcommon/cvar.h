@@ -54,7 +54,6 @@ struct cvar_t
 	char *resetString; // default value
 	char *latchedString; // for CVAR_LATCH vars
 	int flags;
-	bool modified; // set each time the cvar is changed
 	float value; // atof( string )
 	int integer; // atoi( string )
 };
