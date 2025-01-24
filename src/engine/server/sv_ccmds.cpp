@@ -159,22 +159,6 @@ static void SV_MapRestart_f()
 		return;
 	}
 
-	// check for changes in variables that can't just be restarted
-	// check for maxclients change
-	if ( sv_maxclients->modified )
-	{
-		char mapname[ MAX_QPATH ];
-		char pakname[ MAX_OSPATH ];
-
-		Log::Notice( "sv_maxclients variable change — restarting." );
-		// restart the map the slow way
-		Q_strncpyz( mapname, Cvar_VariableString( "mapname" ), sizeof( mapname ) );
-		Q_strncpyz( pakname, Cvar_VariableString( "pakname" ), sizeof( pakname ) );
-
-		SV_SpawnServer(pakname, mapname);
-		return;
-	}
-
 	// toggle the server bit so clients can detect that a
 	// map_restart has happened
 	svs.snapFlagServerBit ^= SNAPFLAG_SERVERCOUNT;
