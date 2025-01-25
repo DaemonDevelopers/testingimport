@@ -149,7 +149,7 @@ option(USE_STATIC_LIBS "Tries to use static libs where possible. Only works for 
 
 # Game VM modules are built with a recursive invocation of CMake, by which all the configuration
 # options are lost, except ones we explicitly choose to pass.
-set(DEFAULT_NACL_VM_INHERITED_OPTIONS
+set(DEFAULT_VMS_INHERITED_OPTIONS
     BE_VERBOSE
     BUILD_CGAME
     BUILD_SGAME
@@ -160,15 +160,16 @@ set(DEFAULT_NACL_VM_INHERITED_OPTIONS
     USE_COMPILER_INTRINSICS
     USE_DEBUG_OPTIMIZE
     USE_HARDENING
+    USE_LTO
     USE_PEDANTIC
     USE_PRECOMPILED_HEADER
     USE_RECOMMENDED_C_STANDARD
     USE_RECOMMENDED_CXX_STANDARD
     USE_WERROR
 )
-set(NACL_VM_INHERITED_OPTIONS "${DEFAULT_NACL_VM_INHERITED_OPTIONS}" CACHE STRING
-    "Semicolon-separated list of options for which NaCl game VMs should use the same value as the other binaries")
-mark_as_advanced(NACL_VM_INHERITED_OPTIONS)
+set(VMS_INHERITED_OPTIONS "${DEFAULT_VMS_INHERITED_OPTIONS}" CACHE STRING
+    "Semicolon-separated list of options for which game VMs should use the same value as the other binaries")
+mark_as_advanced(VMS_INHERITED_OPTIONS)
 
 ################################################################################
 # Directories
