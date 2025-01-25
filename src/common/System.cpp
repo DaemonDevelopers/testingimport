@@ -39,10 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/random.h>
 #endif
 #ifdef __native_client__
-#if !defined(__saigo__)
-#include <nacl/nacl_exception.h>
-#include <nacl/nacl_minidump.h>
-#endif
+#include <nacl/native_client/src/include/nacl/nacl_minidump.h>
 #include <nacl/nacl_random.h>
 #else
 #include <dlfcn.h>
@@ -337,10 +334,8 @@ static void CrashHandler(const void* data, size_t n)
 
 void SetupCrashHandler()
 {
-#if !defined(__saigo__)
     nacl_minidump_register_crash_handler();
     nacl_minidump_set_callback(CrashHandler);
-#endif
 }
 #else
 NORETURN static void CrashHandler(int sig)
