@@ -103,7 +103,6 @@ namespace Cvar {
             }
         }
 
-        var.modified = modified;
         var.value = atof(var.string);
         var.integer = atoi(var.string);
 
@@ -144,7 +143,6 @@ namespace Cvar {
             }
         }
 
-        var.modified |= modified;
         var.value = atof(var.string);
         var.integer = atoi(var.string);
 

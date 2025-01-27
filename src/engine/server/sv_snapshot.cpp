@@ -1006,7 +1006,7 @@ void SV_SendClientMessages()
 	SV_UpdateConfigStrings();
 
 	// send a message to each connected client
-	for ( i = 0; i < sv_maxclients->integer; i++ )
+	for ( i = 0; i < sv_maxClients.Get(); i++ )
 	{
 		c = &svs.clients[ i ];
 

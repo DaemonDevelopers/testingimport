@@ -159,22 +159,6 @@ static void SV_MapRestart_f()
 		return;
 	}
 
-	// check for changes in variables that can't just be restarted
-	// check for maxclients change
-	if ( sv_maxclients->modified )
-	{
-		char mapname[ MAX_QPATH ];
-		char pakname[ MAX_OSPATH ];
-
-		Log::Notice( "sv_maxclients variable change — restarting." );
-		// restart the map the slow way
-		Q_strncpyz( mapname, Cvar_VariableString( "mapname" ), sizeof( mapname ) );
-		Q_strncpyz( pakname, Cvar_VariableString( "pakname" ), sizeof( pakname ) );
-
-		SV_SpawnServer(pakname, mapname);
-		return;
-	}
-
 	// toggle the server bit so clients can detect that a
 	// map_restart has happened
 	svs.snapFlagServerBit ^= SNAPFLAG_SERVERCOUNT;
@@ -208,7 +192,7 @@ static void SV_MapRestart_f()
 	sv.restarting = false;
 
 	// connect and begin all the clients
-	for ( i = 0; i < sv_maxclients->integer; i++ )
+	for ( i = 0; i < sv_maxClients.Get(); i++ )
 	{
 		client = &svs.clients[ i ];
 
@@ -276,7 +260,7 @@ public:
 
 		auto players = std::count_if(
 			svs.clients,
-			svs.clients+sv_maxclients->integer,
+			svs.clients+sv_maxClients.Get(),
 			[](const client_t& cl) {
 				return cl.state != clientState_t::CS_FREE;
 			}
@@ -309,10 +293,10 @@ public:
 			time_string,
 			sv_mapname->string,
 			players,
-			sv_maxclients->integer
+			sv_maxClients.Get()
 		);
 
-		for ( int i = 0; i < sv_maxclients->integer; i++ )
+		for ( int i = 0; i < sv_maxClients.Get(); i++ )
 		{
 			const client_t& cl = svs.clients[i];
 			if ( cl.state == clientState_t::CS_FREE )

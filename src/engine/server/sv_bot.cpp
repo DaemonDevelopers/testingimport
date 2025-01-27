@@ -44,13 +44,13 @@ SV_BotAllocateClient
 int SV_BotAllocateClient()
 {
 	int i;
-	for (i = std::max(1, sv_privateClients.Get()); i < sv_maxclients->integer; i++) {
+	for (i = std::max(1, sv_privateClients.Get()); i < sv_maxClients.Get(); i++) {
 		if (svs.clients[i].state == clientState_t::CS_FREE) {
 			break;
 		}
 	}
 
-	if (i >= sv_maxclients->integer) {
+	if (i >= sv_maxClients.Get()) {
 		return -1;
 	}
 
@@ -74,7 +74,7 @@ void SV_BotFreeClient( int clientNum )
 {
 	client_t *cl;
 
-	if ( clientNum < 0 || clientNum >= sv_maxclients->integer )
+	if ( clientNum < 0 || clientNum >= sv_maxClients.Get() )
 	{
 		Sys::Drop( "SV_BotFreeClient: bad clientNum: %i", clientNum );
 	}

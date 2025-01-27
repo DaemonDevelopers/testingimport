@@ -85,7 +85,7 @@ void SV_DirectConnect( const netadr_t& from, const Cmd::Args& args )
 	int qport = atoi( userinfo["qport"].c_str() );
 
 	auto clients_begin = svs.clients;
-	auto clients_end = clients_begin + sv_maxclients->integer;
+	auto clients_end = clients_begin + sv_maxClients.Get();
 
 	client_t* reconnecting = std::find_if(clients_begin, clients_end,
 		[&from, qport](const client_t& client)
@@ -145,7 +145,7 @@ void SV_DirectConnect( const netadr_t& from, const Cmd::Args& args )
 		if ( userinfo["password"] != sv_privatePassword->string )
 		{
 			// skip past the reserved slots
-			allowed_clients_begin += std::min(sv_privateClients.Get(), sv_maxclients->integer);
+			allowed_clients_begin += std::min(sv_privateClients.Get(), sv_maxClients.Get());
 		}
 
 		new_client = std::find_if(allowed_clients_begin, clients_end,
@@ -157,7 +157,7 @@ void SV_DirectConnect( const netadr_t& from, const Cmd::Args& args )
 		{
 			// This is a bizarre special case, in which if you have a local address and EVERY
 			// non-private client is a bot (and there is at least 1), you can boot one of them off.
-			if ( NET_IsLocalAddress( from ) && sv_privateClients.Get() < sv_maxclients->integer )
+			if ( NET_IsLocalAddress( from ) && sv_privateClients.Get() < sv_maxClients.Get() )
 			{
 				bool all_bots = std::all_of(allowed_clients_begin, clients_end,
 					[](const client_t& client) { return SV_IsBot(&client); }
@@ -165,8 +165,8 @@ void SV_DirectConnect( const netadr_t& from, const Cmd::Args& args )
 
 				if ( all_bots )
 				{
-					SV_DropClient( &svs.clients[ sv_maxclients->integer - 1 ], "only bots on server" );
-					new_client = &svs.clients[ sv_maxclients->integer - 1 ];
+					SV_DropClient( &svs.clients[ sv_maxClients.Get() - 1 ], "only bots on server" );
+					new_client = &svs.clients[ sv_maxClients.Get() - 1 ];
 				}
 				else
 				{
@@ -236,7 +236,7 @@ void SV_DirectConnect( const netadr_t& from, const Cmd::Args& args )
 			return client.state >= clientState_t::CS_CONNECTED;
 	});
 
-	if ( count == 1 || count == sv_maxclients->integer )
+	if ( count == 1 || count == sv_maxClients.Get() )
 	{
 		SV_Heartbeat_f();
 	}
@@ -303,7 +303,7 @@ void SV_DropClient( client_t *drop, const char *reason )
 	// send a heartbeat now so the master will get up to date info
 	// if there is already a slot for this IP address, reuse it
 	int i;
-	for ( i = 0; i < sv_maxclients->integer; i++ )
+	for ( i = 0; i < sv_maxClients.Get(); i++ )
 	{
 		if ( svs.clients[ i ].state >= clientState_t::CS_CONNECTED )
 		{
@@ -311,7 +311,7 @@ void SV_DropClient( client_t *drop, const char *reason )
 		}
 	}
 
-	if ( i == sv_maxclients->integer )
+	if ( i == sv_maxClients.Get() )
 	{
 		SV_Heartbeat_f();
 	}

@@ -5712,26 +5712,6 @@ const RenderCommand *SwapBuffersCommand::ExecuteSelf( ) const
 		RB_ShowImages();
 	}
 
-	// we measure overdraw by reading back the stencil buffer and
-	// counting up the number of increments that have happened
-	if ( r_measureOverdraw->integer )
-	{
-		int           i;
-		unsigned sum = 0;
-		unsigned char *stencilReadback;
-
-		stencilReadback = ( unsigned char * ) ri.Hunk_AllocateTempMemory( glConfig.vidWidth * glConfig.vidHeight );
-		glReadPixels( 0, 0, glConfig.vidWidth, glConfig.vidHeight, GL_STENCIL_INDEX, GL_UNSIGNED_BYTE, stencilReadback );
-
-		for ( i = 0; i < glConfig.vidWidth * glConfig.vidHeight; i++ )
-		{
-			sum += stencilReadback[ i ];
-		}
-
-		backEnd.pc.c_overDraw += sum;
-		ri.Hunk_FreeTempMemory( stencilReadback );
-	}
-
 	GLimp_LogComment( "***************** RB_SwapBuffers *****************\n\n\n" );
 
 	GLimp_EndFrame();

@@ -62,10 +62,11 @@ cvar_t         *sv_timeout; // seconds without any message
 cvar_t         *sv_zombietime; // seconds to sink messages after disconnect
 cvar_t         *sv_privatePassword; // password for the privateClient slots
 cvar_t         *sv_allowDownload;
-cvar_t         *sv_maxclients;
+Cvar::Range<Cvar::Cvar<int>> sv_maxClients("sv_maxclients",
+	"max number of players on the server", Cvar::SERVERINFO, 20, 1, MAX_CLIENTS);
 
 Cvar::Range<Cvar::Cvar<int>> sv_privateClients("sv_privateClients",
-    "number of password-protected client slots", CVAR_SERVERINFO, 0, 0, MAX_CLIENTS);
+    "number of password-protected client slots", Cvar::SERVERINFO, 0, 0, MAX_CLIENTS);
 cvar_t         *sv_hostname;
 cvar_t         *sv_statsURL;
 cvar_t         *sv_reconnectlimit; // minimum seconds between connect messages
@@ -245,7 +246,7 @@ void PRINTF_LIKE(2) SV_SendServerCommand( client_t *cl, const char *fmt, ... )
 	}
 
 	// send the data to all relevent clients
-	for ( j = 0, client = svs.clients; j < sv_maxclients->integer; j++, client++ )
+	for ( j = 0, client = svs.clients; j < sv_maxClients.Get(); j++, client++ )
 	{
 		if ( client->state < clientState_t::CS_PRIMED )
 		{
@@ -490,7 +491,7 @@ static void SVC_Status( const netadr_t& from, const Cmd::Args& args )
 	}
 
 	std::string status;
-	for ( int i = 0; i < sv_maxclients->integer; i++ )
+	for ( int i = 0; i < sv_maxClients.Get(); i++ )
 	{
 		client_t* cl = &svs.clients[ i ];
 
@@ -524,7 +525,7 @@ static void SVC_Info( const netadr_t& from, const Cmd::Args& args )
 	int publicSlotHumans = 0;
 	int privateSlotHumans = 0;
 
-	for ( int i = 0; i < sv_maxclients->integer; i++ )
+	for ( int i = 0; i < sv_maxClients.Get(); i++ )
 	{
 		if ( svs.clients[ i ].state >= clientState_t::CS_CONNECTED )
 		{
@@ -590,7 +591,7 @@ static void SVC_Info( const netadr_t& from, const Cmd::Args& args )
 	info_map["bots"] = std::to_string( bots );
 	// Satisfies (number of open public slots) = (displayed max clients) - (number of clients).
 	info_map["sv_maxclients"] = std::to_string(
-	    std::max( 0, sv_maxclients->integer - sv_privateClients.Get() ) + privateSlotHumans );
+	    std::max( 0, sv_maxClients.Get() - sv_privateClients.Get() ) + privateSlotHumans );
 
 	if ( sv_statsURL->string[0] )
 	{
@@ -1097,7 +1098,7 @@ void SV_PacketEvent( const netadr_t& from, msg_t *msg )
 	qport = MSG_ReadShort( msg ) & 0xffff;
 
 	// find which client the message is from
-	for ( i = 0, cl = svs.clients; i < sv_maxclients->integer; i++, cl++ )
+	for ( i = 0, cl = svs.clients; i < sv_maxClients.Get(); i++, cl++ )
 	{
 		if ( cl->state == clientState_t::CS_FREE )
 		{
@@ -1160,7 +1161,7 @@ void SV_CalcPings()
 	int           total, count;
 	int           delta;
 
-	for ( i = 0; i < sv_maxclients->integer; i++ )
+	for ( i = 0; i < sv_maxClients.Get(); i++ )
 	{
 		cl = &svs.clients[ i ];
 
@@ -1240,7 +1241,7 @@ void SV_CheckTimeouts()
 	droppoint = svs.time - 1000 * sv_timeout->integer;
 	zombiepoint = svs.time - 1000 * sv_zombietime->integer;
 
-	for ( i = 0, cl = svs.clients; i < sv_maxclients->integer; i++, cl++ )
+	for ( i = 0, cl = svs.clients; i < sv_maxClients.Get(); i++, cl++ )
 	{
 		// message times may be wrong across a changelevel
 		if ( cl->lastPacketTime > svs.time )

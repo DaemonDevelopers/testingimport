@@ -810,29 +810,6 @@ void RE_BeginFrame()
 	tr.frameSceneNum = 0;
 	tr.viewCount = 0;
 
-	// do overdraw measurement
-	if ( r_measureOverdraw->integer )
-	{
-		R_SyncRenderThread();
-		glEnable( GL_STENCIL_TEST );
-		glStencilMask( ~0U );
-		GL_ClearStencil( 0U );
-		glStencilFunc( GL_ALWAYS, 0U, ~0U );
-		glStencilOp( GL_KEEP, GL_INCR, GL_INCR );
-		r_measureOverdraw->modified = false;
-	}
-	else
-	{
-		// this is only reached if it was on and is now off
-		if ( r_measureOverdraw->modified )
-		{
-			R_SyncRenderThread();
-			glDisable( GL_STENCIL_TEST );
-		}
-
-		r_measureOverdraw->modified = false;
-	}
-
 	// texturemode stuff
 	if ( Util::optional<std::string> textureMode = r_textureMode.GetModifiedValue() )
 	{

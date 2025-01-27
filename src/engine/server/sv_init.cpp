@@ -145,7 +145,7 @@ void SV_UpdateConfigStrings()
 		if ( sv.state == serverState_t::SS_GAME || sv.restarting )
 		{
 			// send the data to all relevent clients
-			for ( i = 0, client = svs.clients; i < sv_maxclients->integer; i++, client++ )
+			for ( i = 0, client = svs.clients; i < sv_maxClients.Get(); i++, client++ )
 			{
 				if ( client->state < clientState_t::CS_PRIMED )
 				{
@@ -199,7 +199,7 @@ SV_SetUserinfo
 */
 void SV_SetUserinfo( int index, const char *val )
 {
-	if ( index < 0 || index >= sv_maxclients->integer )
+	if ( index < 0 || index >= sv_maxClients.Get() )
 	{
 		Sys::Drop( "SV_SetUserinfo: bad index %i", index );
 	}
@@ -226,7 +226,7 @@ void SV_GetUserinfo( int index, char *buffer, int bufferSize )
 		Sys::Drop( "SV_GetUserinfo: bufferSize == %i", bufferSize );
 	}
 
-	if ( index < 0 || index >= sv_maxclients->integer )
+	if ( index < 0 || index >= sv_maxClients.Get() )
 	{
 		Sys::Drop( "SV_GetUserinfo: bad index %i", index );
 	}
@@ -248,7 +248,7 @@ void SV_GetPlayerPubkey( int clientNum, char *pubkey, int size )
 		Sys::Drop( "SV_GetPlayerPubkey: size == %i", size );
 	}
 
-	if ( clientNum < 0 || clientNum >= sv_maxclients->integer )
+	if ( clientNum < 0 || clientNum >= sv_maxClients.Get() )
 	{
 		Sys::Drop( "SV_GetPlayerPubkey: bad clientNum %i", clientNum );
 	}
@@ -296,29 +296,6 @@ void SV_CreateBaseline()
 
 /*
 ===============
-SV_BoundMaxClients
-
-===============
-*/
-void SV_BoundMaxClients( int minimum )
-{
-	// get the current maxclients value
-	Cvar_Get( "sv_maxclients", "20", 0 ); // NERVE - SMF - changed to 20 from 8
-
-	sv_maxclients->modified = false;
-
-	if ( sv_maxclients->integer < minimum )
-	{
-		Cvar_Set( "sv_maxclients", va( "%i", minimum ) );
-	}
-	else if ( sv_maxclients->integer > MAX_CLIENTS )
-	{
-		Cvar_Set( "sv_maxclients", va( "%i", MAX_CLIENTS ) );
-	}
-}
-
-/*
-===============
 SV_Startup
 
 Called when a host starts a map when it wasn't running
@@ -334,12 +311,12 @@ void SV_Startup()
 		Sys::Error( "SV_Startup: svs.initialized" );
 	}
 
-	SV_BoundMaxClients( 1 );
+	Cvar::Latch( sv_maxClients );
 
 	// RF, avoid trying to allocate large chunk on a fragmented zone
-	svs.clients = ( client_t * ) Z_Calloc( sizeof( client_t ) * sv_maxclients->integer );
+	svs.clients = ( client_t * ) Z_Calloc( sizeof( client_t ) * sv_maxClients.Get() );
 
-	svs.numSnapshotEntities = sv_maxclients->integer * PACKET_BACKUP * 64;
+	svs.numSnapshotEntities = sv_maxClients.Get() * PACKET_BACKUP * 64;
 
 	svs.initialized = true;
 
@@ -360,10 +337,14 @@ SV_ChangeMaxClients
 */
 void SV_ChangeMaxClients()
 {
+	int oldMaxClients = sv_maxClients.Get();
+	Cvar::Latch( sv_maxClients );
+	int desiredMaxClients = sv_maxClients.Get();
+
 	// get the highest client number in use
 	int count = 0;
 
-	for ( int i = 0; i < sv_maxclients->integer; i++ )
+	for ( int i = 0; i < oldMaxClients; i++ )
 	{
 		if ( svs.clients[ i ].state >= clientState_t::CS_CONNECTED )
 		{
@@ -373,12 +354,21 @@ void SV_ChangeMaxClients()
 
 	count++;
 
-	int oldMaxClients = sv_maxclients->integer;
 	// never go below the highest client number in use
-	SV_BoundMaxClients( count );
+	int newMaxClients = std::max( count, desiredMaxClients );
+
+	if ( newMaxClients != desiredMaxClients )
+	{
+		// keep trying to set the user-requested value until the high-numbered clients leave
+		sv_maxClients.Set( newMaxClients );
+		Cvar::Latch( sv_maxClients );
+		sv_maxClients.Set( desiredMaxClients );
+	}
+
+	ASSERT_EQ( newMaxClients, sv_maxClients.Get() );
 
 	// if still the same
-	if ( sv_maxclients->integer == oldMaxClients )
+	if ( newMaxClients == oldMaxClients )
 	{
 		return;
 	}
@@ -386,7 +376,7 @@ void SV_ChangeMaxClients()
 	client_t* oldClients = svs.clients;
 
 	// allocate new clients
-	svs.clients = ( client_t * ) Z_Calloc( sv_maxclients->integer * sizeof( client_t ) );
+	svs.clients = ( client_t * ) Z_Calloc( newMaxClients * sizeof( client_t ) );
 
 	// copy the clients over
 	for ( int i = 0; i < count; i++ )
@@ -400,7 +390,7 @@ void SV_ChangeMaxClients()
 	// free the old clients
 	Z_Free( oldClients );
 
-	svs.numSnapshotEntities = sv_maxclients->integer * PACKET_BACKUP * 64;
+	svs.numSnapshotEntities = newMaxClients * PACKET_BACKUP * 64;
 }
 
 /*
@@ -476,10 +466,7 @@ void SV_SpawnServer(std::string pakname, std::string mapname)
 	else
 	{
 		// check for maxclients change
-		if ( sv_maxclients->modified )
-		{
-			SV_ChangeMaxClients();
-		}
+		SV_ChangeMaxClients();
 	}
 
 	// allocate the snapshot entities
@@ -528,7 +515,7 @@ void SV_SpawnServer(std::string pakname, std::string mapname)
 	// create a baseline for more efficient communications
 	SV_CreateBaseline();
 
-	for ( i = 0; i < sv_maxclients->integer; i++ )
+	for ( i = 0; i < sv_maxClients.Get(); i++ )
 	{
 		// send the new gamestate to all connected clients
 		if ( svs.clients[ i ].state >= clientState_t::CS_CONNECTED )
@@ -621,7 +608,7 @@ void SV_Init()
 	// serverinfo vars
 	sv_mapname = Cvar_Get( "mapname", "nomap", CVAR_SERVERINFO | CVAR_ROM );
 	sv_hostname = Cvar_Get( "sv_hostname", UNNAMED_SERVER, CVAR_SERVERINFO  );
-	sv_maxclients = Cvar_Get( "sv_maxclients", "20", CVAR_SERVERINFO | CVAR_LATCH );  // NERVE - SMF - changed to 20 from 8
+	Cvar::Latch( sv_maxClients );
 	sv_maxRate = Cvar_Get( "sv_maxRate", "0",  CVAR_SERVERINFO );
 	sv_floodProtect = Cvar_Get( "sv_floodProtect", "0",  CVAR_SERVERINFO );
 	Cvar::SetValue( "layout", "" ); // TODO: declare in sgame
@@ -675,7 +662,7 @@ void SV_FinalCommand( char *cmd, bool disconnect )
 	// send it twice, ignoring rate
 	for ( j = 0; j < 2; j++ )
 	{
-		for ( i = 0, cl = svs.clients; i < sv_maxclients->integer; i++, cl++ )
+		for ( i = 0, cl = svs.clients; i < sv_maxClients.Get(); i++, cl++ )
 		{
 			if ( cl->state >= clientState_t::CS_CONNECTED )
 			{
@@ -753,7 +740,7 @@ void SV_Shutdown( const char *finalmsg )
 	{
 		int index;
 
-		for ( index = 0; index < sv_maxclients->integer; index++ )
+		for ( index = 0; index < sv_maxClients.Get(); index++ )
 		{
 			SV_FreeClient( &svs.clients[ index ] );
 		}

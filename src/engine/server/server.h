@@ -243,8 +243,8 @@ struct serverStatic_t
 
 	int           snapFlagServerBit; // ^= SNAPFLAG_SERVERCOUNT every SV_SpawnServer()
 
-	client_t      *clients; // [sv_maxclients->integer];
-	int           numSnapshotEntities; // sv_maxclients->integer*PACKET_BACKUP*MAX_PACKET_ENTITIES
+	client_t      *clients; // [sv_maxClients.Get()];
+	int           numSnapshotEntities; // sv_maxClients.Get()*PACKET_BACKUP*MAX_PACKET_ENTITIES
 	int           nextSnapshotEntities; // next snapshotEntities to use
 	std::unique_ptr<entityState_t[]> snapshotEntities; // [numSnapshotEntities]
 	receipt_t     infoReceipts[ MAX_INFO_RECEIPTS ];
@@ -296,7 +296,7 @@ extern cvar_t         *sv_timeout;
 extern cvar_t         *sv_zombietime;
 extern cvar_t         *sv_privatePassword;
 extern cvar_t         *sv_allowDownload;
-extern cvar_t         *sv_maxclients;
+extern Cvar::Range<Cvar::Cvar<int>> sv_maxClients;
 
 extern Cvar::Range<Cvar::Cvar<int>> sv_privateClients;
 extern cvar_t         *sv_hostname;

@@ -278,7 +278,7 @@ std::unique_ptr<Sys::EventBase> Com_GetEvent()
 		return std::move(eventQueue[( eventTail - 1 ) & MASK_QUEUED_EVENTS ]);
 	}
 
-	// check for console commands
+	// check for tty/curses console commands
 	if ( char* s = CON_Input() )
 	{
 		Com_QueueEvent( Util::make_unique<Sys::ConsoleInputEvent>( s ) );

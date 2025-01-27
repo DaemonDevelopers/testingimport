@@ -55,8 +55,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 	cvar_t      *r_showSmp;
 	cvar_t      *r_skipBackEnd;
 
-	cvar_t      *r_measureOverdraw;
-
 	cvar_t      *r_lodBias;
 	cvar_t      *r_lodScale;
 
@@ -1235,7 +1233,6 @@ ScreenshotCmd screenshotPNGRegistration("screenshotPNG", ssFormat_t::SSF_PNG, "p
 		r_showSmp = Cvar_Get( "r_showSmp", "0", CVAR_CHEAT );
 		r_skipBackEnd = Cvar_Get( "r_skipBackEnd", "0", CVAR_CHEAT );
 
-		r_measureOverdraw = Cvar_Get( "r_measureOverdraw", "0", CVAR_CHEAT );
 		r_lodScale = Cvar_Get( "r_lodScale", "5", CVAR_CHEAT );
 		r_norefresh = Cvar_Get( "r_norefresh", "0", CVAR_CHEAT );
 		r_drawentities = Cvar_Get( "r_drawentities", "1", CVAR_CHEAT );
