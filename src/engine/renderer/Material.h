@@ -93,6 +93,10 @@ struct Material {
 	GLuint program = 0;
 	GLShader* shader;
 
+	// Used only for glsl_restart
+	shaderStage_t* refStage;
+	drawSurf_t refDrawSurf;
+
 	int deformIndex;
 	bool tcGenEnvironment;
 	bool tcGen_Lightmap;
@@ -368,6 +372,8 @@ class MaterialSystem {
 	void GenerateTexturesBuffer( std::vector<TextureData>& textures, TexBundle* textureBundles );
 
 	void AddAllWorldSurfaces();
+
+	void GLSLRestart();
 
 	void Free();
 

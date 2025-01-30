@@ -1128,6 +1128,12 @@ ScreenshotCmd screenshotPNGRegistration("screenshotPNG", ssFormat_t::SSF_PNG, "p
 					stage->deformIndex = deformIndex;
 				}
 			}
+
+			if ( glConfig2.usingMaterialSystem ) {
+				/* GLSL shaders linked to materials will be invalidated by glsl_restart,
+				so we need to reset them here */
+				materialSystem.GLSLRestart();
+			}
 		}
 	};
 	static GlslRestartCmd glslRestartCmdRegistration;

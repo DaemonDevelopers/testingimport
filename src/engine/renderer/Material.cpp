@@ -1360,6 +1360,13 @@ void MaterialSystem::ProcessStage( drawSurf_t* drawSurf, shaderStage_t* pStage, 
 	pStage->materialProcessor( &material, pStage, drawSurf );
 	pStage->paddedSize = material.shader->GetPaddedSize();
 
+	// HACK: Copy the shaderStage_t and drawSurf_t that we need into the material, so we can use it with glsl_restart
+	material.refStage = pStage;
+	material.refDrawSurf = *drawSurf;
+	material.refDrawSurf.entity = nullptr;
+	material.refDrawSurf.depthSurface = nullptr;
+	material.refDrawSurf.fogSurface = nullptr;
+
 	std::vector<Material>& materials = materialPacks[materialPack].materials;
 	std::vector<Material>::iterator currentSearchIt = materials.begin();
 	std::vector<Material>::iterator materialIt;
@@ -1505,6 +1512,16 @@ void MaterialSystem::AddAllWorldSurfaces() {
 	GenerateWorldCommandBuffer();
 
 	generatingWorldCommandBuffer = false;
+}
+
+void MaterialSystem::GLSLRestart() {
+	for ( MaterialPack& materialPack : materialPacks ) {
+		for ( Material& material : materialPack.materials ) {
+			/* We only really need to reset material.shader here,
+			but we keep a copy of the original shaderStage_t and drawSurf_t used for it so we don't change the actual material data */
+			material.refStage->materialProcessor( &material, material.refStage, &material.refDrawSurf );
+		}
+	}
 }
 
 void MaterialSystem::AddStageTextures( drawSurf_t* drawSurf, const uint32_t stage, Material* material ) {
