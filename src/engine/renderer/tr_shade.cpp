@@ -2434,6 +2434,11 @@ void Tess_ComputeColor( shaderStage_t *pStage )
 			{
 				rgb = Math::Clamp( RB_EvalExpression( &pStage->rgbExp, 1.0 ), 0.0f, 1.0f );
 
+				if ( tr.worldLinearizeTexture )
+				{
+					rgb = convertFromSRGB ( rgb );
+				}
+
 				tess.svars.color = Color::White * rgb;
 				break;
 			}
@@ -2460,6 +2465,13 @@ void Tess_ComputeColor( shaderStage_t *pStage )
 					red = Math::Clamp( RB_EvalExpression( &pStage->redExp, 1.0 ), 0.0f, 1.0f );
 					green = Math::Clamp( RB_EvalExpression( &pStage->greenExp, 1.0 ), 0.0f, 1.0f );
 					blue = Math::Clamp( RB_EvalExpression( &pStage->blueExp, 1.0 ), 0.0f, 1.0f );
+				}
+
+				if ( tr.worldLinearizeTexture )
+				{
+					red = convertFromSRGB ( red );
+					green = convertFromSRGB ( green );
+					blue = convertFromSRGB ( blue );
 				}
 
 				tess.svars.color.SetRed( red );
