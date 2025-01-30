@@ -226,8 +226,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 	cvar_t      *r_wolfFog;
 	cvar_t      *r_noFog;
 
-	Cvar::Range<Cvar::Cvar<float>> r_forceAmbient( "r_forceAmbient", "Minimal light amount in lightGrid", Cvar::NONE,
-		0.125f, 0.0f, 0.3f );
+	Cvar::Range<Cvar::Cvar<float>> r_forceAmbient( "r_forceAmbient", "Minimal light amount in lightGrid; -1 to use map value", Cvar::NONE,
+		-1.0f, -1.0f, 0.3f );
 	Cvar::Cvar<float> r_ambientScale( "r_ambientScale", "Scale lightGrid produced by ambientColor keyword by this much", Cvar::CHEAT, 1.0 );
 	cvar_t      *r_lightScale;
 	cvar_t      *r_debugSort;
