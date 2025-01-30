@@ -1123,6 +1123,7 @@ enum class shaderProfilerRenderSubGroupsMode {
 
 		bool            dpMaterial;
 
+		int linearizeTexture;
 		// Core renderer (code path for when only OpenGL Core is available, or compatible OpenGL 2).
 		stageRenderer_t colorRenderer;
 
@@ -2731,6 +2732,8 @@ enum class shaderProfilerRenderSubGroupsMode {
 		bool   worldLightMapping;
 		bool   worldDeluxeMapping;
 		bool   worldHDR_RGBE;
+		bool worldLinearizeTexture;
+		bool worldLinearizeLightMap;
 
 		lightMode_t lightMode;
 		lightMode_t worldLight;
@@ -3025,6 +3028,7 @@ enum class shaderProfilerRenderSubGroupsMode {
 	extern cvar_t *r_rimExponent;
 
 	extern Cvar::Cvar<bool> r_highPrecisionRendering;
+	extern Cvar::Cvar<bool> r_cheapSRGB;
 
 	extern cvar_t *r_logFile; // number of frames to emit GL logs
 

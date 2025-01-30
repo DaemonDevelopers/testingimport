@@ -2806,6 +2806,36 @@ public:
 	}
 };
 
+class u_LinearizeTexture :
+	GLUniform1i
+{
+public:
+	u_LinearizeTexture( GLShader *shader ) :
+		GLUniform1i( shader, "u_LinearizeTexture" )
+	{
+	}
+
+	void SetUniform_LinearizeTexture( const int value )
+	{
+		this->SetValue( value );
+	}
+};
+
+class u_DelinearizeScreen :
+	GLUniform1i
+{
+public:
+	u_DelinearizeScreen( GLShader *shader ) :
+		GLUniform1i( shader, "u_DelinearizeScreen" )
+	{
+	}
+
+	void SetUniform_DelinearizeScreen( const int value )
+	{
+		this->SetValue( value );
+	}
+};
+
 class u_ShadowBlur :
 	GLUniform1f
 {
@@ -3834,6 +3864,7 @@ class GLShader_generic :
 	public u_AlphaThreshold,
 	public u_ModelMatrix,
 	public u_ModelViewProjectionMatrix,
+	public u_LinearizeTexture,
 	public u_ColorModulateColorGen,
 	public u_Color,
 	public u_Bones,
@@ -3863,6 +3894,7 @@ class GLShader_genericMaterial :
 	public u_AlphaThreshold,
 	public u_ModelMatrix,
 	public u_ModelViewProjectionMatrix,
+	public u_LinearizeTexture,
 	public u_ColorModulateColorGen,
 	public u_Color,
 	public u_DepthScale,
@@ -3901,6 +3933,7 @@ class GLShader_lightMapping :
 	public u_ViewOrigin,
 	public u_ModelMatrix,
 	public u_ModelViewProjectionMatrix,
+	public u_LinearizeTexture,
 	public u_Bones,
 	public u_VertexInterpolation,
 	public u_ReliefDepthScale,
@@ -3952,6 +3985,7 @@ class GLShader_lightMappingMaterial :
 	public u_ViewOrigin,
 	public u_ModelMatrix,
 	public u_ModelViewProjectionMatrix,
+	public u_LinearizeTexture,
 	public u_ReliefDepthScale,
 	public u_ReliefOffsetBias,
 	public u_NormalScale,
@@ -4195,6 +4229,7 @@ class GLShader_skybox :
 	public u_CloudHeight,
 	public u_UseCloudMap,
 	public u_AlphaThreshold,
+	public u_LinearizeTexture,
 	public u_ModelViewProjectionMatrix
 {
 public:
@@ -4210,6 +4245,7 @@ class GLShader_skyboxMaterial :
 	public u_CloudHeight,
 	public u_UseCloudMap,
 	public u_AlphaThreshold,
+	public u_LinearizeTexture,
 	public u_ModelViewProjectionMatrix {
 	public:
 	GLShader_skyboxMaterial( GLShaderManager* manager );
@@ -4221,6 +4257,7 @@ class GLShader_fogQuake3 :
 	public u_FogMap,
 	public u_ModelMatrix,
 	public u_ModelViewProjectionMatrix,
+	public u_LinearizeTexture,
 	public u_ColorGlobal,
 	public u_Bones,
 	public u_VertexInterpolation,
@@ -4241,6 +4278,7 @@ class GLShader_fogQuake3Material :
 	public u_FogMap,
 	public u_ModelMatrix,
 	public u_ModelViewProjectionMatrix,
+	public u_LinearizeTexture,
 	public u_ColorGlobal,
 	public u_FogDistanceVector,
 	public u_FogDepthVector,
@@ -4257,6 +4295,7 @@ class GLShader_fogGlobal :
 	public u_DepthMap,
 	public u_ModelViewProjectionMatrix,
 	public u_UnprojectMatrix,
+	public u_LinearizeTexture,
 	public u_Color,
 	public u_FogDistanceVector
 {
@@ -4354,7 +4393,8 @@ class GLShader_cameraEffects :
 	public u_ColorModulate,
 	public u_TextureMatrix,
 	public u_ModelViewProjectionMatrix,
-	public u_InverseGamma
+	public u_InverseGamma,
+	public u_DelinearizeScreen
 {
 public:
 	GLShader_cameraEffects( GLShaderManager *manager );

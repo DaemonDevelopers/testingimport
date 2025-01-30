@@ -2980,6 +2980,9 @@ void RB_RenderGlobalFog()
 	// go back to the world modelview matrix
 	backEnd.orientation = backEnd.viewParms.world;
 
+	// u_LinearizeTexture
+	gl_fogGlobalShader->SetUniform_LinearizeTexture( tr.worldLinearizeTexture );
+
 	{
 		fog_t *fog;
 
@@ -3327,6 +3330,9 @@ void RB_CameraPostFX()
 
 	// enable shader, set arrays
 	gl_cameraEffectsShader->BindProgram( 0 );
+
+	// u_DelinearizeScreen
+	gl_cameraEffectsShader->SetUniform_DelinearizeScreen( tr.worldLinearizeTexture );
 
 	gl_cameraEffectsShader->SetUniform_ColorModulate( backEnd.viewParms.gradingWeights );
 
