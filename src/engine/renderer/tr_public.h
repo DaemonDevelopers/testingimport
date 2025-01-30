@@ -103,6 +103,7 @@ struct glconfig2_t
 	bool shadingLanguage420PackAvailable;
 	bool explicitUniformLocationAvailable;
 	bool directStateAccessAvailable;
+	bool vertexAttribBindingAvailable;
 	bool shaderImageLoadStoreAvailable;
 	bool shaderAtomicCountersAvailable;
 	bool shaderAtomicCounterOpsAvailable;
@@ -117,6 +118,8 @@ struct glconfig2_t
 	bool shaderSubgroupQuadAvailable;
 	bool materialSystemAvailable; // do the driver/hardware support it
 	bool usingMaterialSystem; // are we using it right now
+	bool geometryCacheAvailable;
+	bool usingGeometryCache;
 	bool gpuShader4Available;
 	bool gpuShader5Available;
 	bool textureGatherAvailable;

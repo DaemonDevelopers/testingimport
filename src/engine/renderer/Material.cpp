@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "tr_local.h"
 #include "Material.h"
 #include "ShadeCommon.h"
+#include "GeometryCache.h"
 
 GLUBO materialsUBO( "materials", Util::ordinal( BufferBind::MATERIALS ), GL_MAP_WRITE_BIT, GL_MAP_INVALIDATE_RANGE_BIT );
 GLBuffer texDataBuffer( "texData", Util::ordinal( BufferBind::TEX_DATA ), GL_MAP_WRITE_BIT, GL_MAP_FLUSH_EXPLICIT_BIT );
@@ -1353,9 +1354,6 @@ void MaterialSystem::ProcessStage( drawSurf_t* drawSurf, shaderStage_t* pStage, 
 	material.cullType = shader->cullType;
 	material.usePolygonOffset = shader->polygonOffset;
 
-	material.vbo = glState.currentVBO;
-	material.ibo = glState.currentIBO;
-
 	material.bspSurface = drawSurf->bspSurface;
 	pStage->materialProcessor( &material, pStage, drawSurf );
 	pStage->paddedSize = material.shader->GetPaddedSize();
@@ -1453,11 +1451,6 @@ void MaterialSystem::GenerateWorldMaterials() {
 		if ( *drawSurf->surface == surfaceType_t::SF_SKIP ) {
 			continue;
 		}
-
-		// The verts aren't used; it's only to get the VBO/IBO.
-		Tess_Begin( Tess_StageIteratorDummy, shader, nullptr, true, -1, 0 );
-		rb_surfaceTable[Util::ordinal( *( drawSurf->surface ) )]( drawSurf->surface );
-		Tess_Clear();
 
 		// Only add the main surface for surfaces with depth pre-pass or fog to the total count
 		if ( !drawSurf->materialSystemSkip ) {
@@ -2058,6 +2051,8 @@ void MaterialSystem::RenderMaterials( const shaderSort_t fromSort, const shaderS
 
 	materialsUBO.BindBufferBase();
 
+	geometryCache.Bind();
+
 	for ( MaterialPack& materialPack : materialPacks ) {
 		if ( materialPack.fromSort >= fromSort && materialPack.toSort <= toSort ) {
 			for ( Material& material : materialPack.materials ) {
@@ -2066,6 +2061,8 @@ void MaterialSystem::RenderMaterials( const shaderSort_t fromSort, const shaderS
 			}
 		}
 	}
+
+	glBindVertexArray( backEnd.currentVAO );
 
 	// Draw the skybox here because we skipped R_AddWorldSurfaces()
 	const bool environmentFogDraw = ( fromSort <= shaderSort_t::SS_ENVIRONMENT_FOG ) && ( toSort >= shaderSort_t::SS_ENVIRONMENT_FOG );
@@ -2149,10 +2146,6 @@ void MaterialSystem::RenderMaterial( Material& material, const uint32_t viewID )
 	GL_LoadModelViewMatrix( backEnd.orientation.modelViewMatrix );
 
 	material.shaderBinder( &material );
-
-	R_BindVBO( material.vbo );
-	R_BindIBO( material.ibo );
-	material.shader->SetRequiredVertexPointers();
 
 	if ( !material.texturesResident ) {
 		for ( Texture* texture : material.textures ) {

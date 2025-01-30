@@ -108,6 +108,8 @@ static Cvar::Cvar<bool> r_arb_texture_gather( "r_arb_texture_gather",
 	"Use GL_ARB_texture_gather if available", Cvar::NONE, true );
 static Cvar::Cvar<bool> r_arb_uniform_buffer_object( "r_arb_uniform_buffer_object",
 	"Use GL_ARB_uniform_buffer_object if available", Cvar::NONE, true );
+static Cvar::Cvar<bool> r_arb_vertex_attrib_binding( "r_arb_vertex_attrib_binding",
+	"Use GL_ARB_vertex_attrib_binding if available", Cvar::NONE, true );
 static Cvar::Cvar<bool> r_ext_draw_buffers( "r_ext_draw_buffers",
 	"Use GL_EXT_draw_buffers if available", Cvar::NONE, true );
 static Cvar::Cvar<bool> r_ext_gpu_shader4( "r_ext_gpu_shader4",
@@ -1996,6 +1998,7 @@ static void GLimp_InitExtensions()
 	Cvar::Latch( r_arb_sync );
 	Cvar::Latch( r_arb_texture_gather );
 	Cvar::Latch( r_arb_uniform_buffer_object );
+	Cvar::Latch( r_arb_vertex_attrib_binding );
 	Cvar::Latch( r_ext_draw_buffers );
 	Cvar::Latch( r_ext_gpu_shader4 );
 	Cvar::Latch( r_ext_texture_filter_anisotropic );
@@ -2550,12 +2553,18 @@ static void GLimp_InitExtensions()
 	// made required in OpenGL 4.5
 	glConfig2.directStateAccessAvailable = LOAD_EXTENSION_WITH_TEST( ExtFlag_NONE, ARB_direct_state_access, r_arb_direct_state_access.Get() );
 
+	// made required in OpenGL 4.3
+	glConfig2.vertexAttribBindingAvailable = LOAD_EXTENSION_WITH_TEST( ExtFlag_NONE, ARB_vertex_attrib_binding, r_arb_vertex_attrib_binding.Get() );
+
+	glConfig2.geometryCacheAvailable = glConfig2.vertexAttribBindingAvailable && glConfig2.directStateAccessAvailable;
+
 	glConfig2.materialSystemAvailable = glConfig2.shaderDrawParametersAvailable && glConfig2.SSBOAvailable
 		&& glConfig2.multiDrawIndirectAvailable && glConfig2.bindlessTexturesAvailable
 		&& glConfig2.computeShaderAvailable && glConfig2.shadingLanguage420PackAvailable
 		&& glConfig2.explicitUniformLocationAvailable && glConfig2.shaderImageLoadStoreAvailable
 		&& glConfig2.shaderAtomicCountersAvailable && glConfig2.indirectParametersAvailable
-		&& glConfig2.directStateAccessAvailable;
+		&& glConfig2.directStateAccessAvailable
+		&& glConfig2.geometryCacheAvailable;
 
 	// This requires GLEW 2.2+, so skip if it's a lower version
 #ifdef GL_KHR_shader_subgroup

@@ -1370,6 +1370,8 @@ public:
 
 class GLBuffer {
 	public:
+	friend class GLVAO;
+
 	std::string name;
 	const GLuint64 SYNC_TIMEOUT = 10000000000; // 10 seconds
 
@@ -1528,6 +1530,78 @@ class GLAtomicCounterBuffer : public GLBuffer {
 	GLAtomicCounterBuffer( const char* name, const GLsizeiptr bindingPoint, const GLbitfield flags, const GLbitfield mapFlags ) :
 		GLBuffer( name, GL_ATOMIC_COUNTER_BUFFER, bindingPoint, flags, mapFlags ) {
 	}
+};
+
+class GLVAO {
+	public:
+	vboAttributeLayout_t attrs[ATTR_INDEX_MAX];
+	uint32_t enabledAttrs;
+
+	GLVAO( const GLuint newVBOBindingPoint ) :
+		VBOBindingPoint( newVBOBindingPoint ) {
+	}
+
+	~GLVAO() = default;
+
+	void Bind() {
+		glBindVertexArray( id );
+	}
+
+	void SetAttrs( const vertexAttributeSpec_t* attrBegin, const vertexAttributeSpec_t* attrEnd ) {
+		uint32_t ofs = 0;
+		for ( const vertexAttributeSpec_t* spec = attrBegin; spec < attrEnd; spec++ ) {
+			vboAttributeLayout_t& attr = attrs[spec->attrIndex];
+			ASSERT_NQ( spec->numComponents, 0U );
+			// vbo->attribBits |= 1 << spec->attrIndex;
+			attr.componentType = spec->componentStorageType;
+			if ( attr.componentType == GL_HALF_FLOAT && !glConfig2.halfFloatVertexAvailable ) {
+				attr.componentType = GL_FLOAT;
+			}
+			attr.numComponents = spec->numComponents;
+			attr.normalize = spec->attrOptions & ATTR_OPTION_NORMALIZE ? GL_TRUE : GL_FALSE;
+
+			attr.ofs = ofs;
+			ofs += attr.numComponents * ComponentSize( attr.componentType );
+			ofs = ( ofs + 3 ) & ~3; // 4 is minimum alignment for any vertex attribute
+
+			enabledAttrs |= 1 << spec->attrIndex;
+		}
+
+		stride = ofs;
+
+		for ( const vertexAttributeSpec_t* spec = attrBegin; spec < attrEnd; spec++ ) {
+			const int index = spec->attrIndex;
+			vboAttributeLayout_t& attr = attrs[index];
+
+			attr.stride = stride;
+
+			glEnableVertexArrayAttrib( id, index );
+			glVertexArrayAttribFormat( id, index, attr.numComponents, attr.componentType,
+				attr.normalize, attr.ofs );
+			glVertexArrayAttribBinding( id, index, VBOBindingPoint );
+		}
+	}
+
+	void SetVertexBuffer( const GLBuffer buffer, const GLuint offset ) {
+		glVertexArrayVertexBuffer( id, VBOBindingPoint, buffer.id, offset, stride );
+	}
+
+	void SetIndexBuffer( const GLBuffer buffer ) {
+		glVertexArrayElementBuffer( id, buffer.id );
+	}
+
+	void GenVAO() {
+		glGenVertexArrays( 1, &id );
+	}
+
+	void DelVAO() {
+		glDeleteVertexArrays( 1, &id );
+	}
+
+	private:
+	GLuint id;
+	const GLuint VBOBindingPoint;
+	GLuint stride;
 };
 
 class GLCompileMacro

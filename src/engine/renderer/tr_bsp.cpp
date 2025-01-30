@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // tr_bsp.c
 #include "tr_local.h"
 #include "framework/CommandSystem.h"
+#include "GeometryCache.h"
 
 /*
 ========================================================
@@ -3207,6 +3208,10 @@ static void R_CreateWorldVBO()
 		{ ATTR_INDEX_QTANGENT, GL_SHORT, GL_SHORT, &vboVerts[ 0 ].qtangent, 4, sizeof( *vboVerts ), ATTR_OPTION_NORMALIZE },
 		{ ATTR_INDEX_TEXCOORD, GL_FLOAT, GL_HALF_FLOAT, &vboVerts[ 0 ].st, 4, sizeof( *vboVerts ), 0 },
 	};
+
+	if ( glConfig2.usingGeometryCache ) {
+		geometryCache.AddMapGeometry( vboNumVerts, vboNumIndexes, std::begin( attrs ), std::end( attrs ), vboIdxs );
+	}
 
 	s_worldData.vbo = R_CreateStaticVBO(
 		"staticWorld_VBO", std::begin( attrs ), std::end( attrs ), vboNumVerts );

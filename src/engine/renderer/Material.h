@@ -114,9 +114,6 @@ struct Material {
 
 	bool usePolygonOffset = false;
 
-	VBO_t* vbo;
-	IBO_t* ibo;
-
 	fog_t* fog = nullptr;
 
 	std::vector<drawSurf_t*> drawSurfs;
@@ -125,7 +122,7 @@ struct Material {
 	std::vector<Texture*> textures;
 
 	bool operator==( const Material& other ) {
-		return program == other.program && stateBits == other.stateBits && vbo == other.vbo && ibo == other.ibo
+		return program == other.program && stateBits == other.stateBits
 			&& fog == other.fog && cullType == other.cullType && usePolygonOffset == other.usePolygonOffset;
 	}
 
@@ -288,7 +285,10 @@ enum class BufferBind {
 	COMMAND_COUNTERS_ATOMIC = 0,
 	COMMAND_COUNTERS_STORAGE = 4, // Avoid needlessly rebinding buffers
 	PORTAL_SURFACES = 5,
-	DEBUG = 10
+	GEOMETRY_CACHE_INPUT_VBO = 6,
+	GEOMETRY_CACHE_VBO = 7,
+	DEBUG = 10,
+	UNUSED = INT32_MAX
 };
 
 class MaterialSystem {
