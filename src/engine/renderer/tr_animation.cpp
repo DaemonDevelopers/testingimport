@@ -683,7 +683,7 @@ void R_AddMD5Surfaces( trRefEntity_t *ent )
 	// see if we are in a fog volume
 	fogNum = R_FogWorldBox( ent->worldBounds );
 
-	if ( !r_vboModels->integer || !model->numVBOSurfaces ||
+	if ( !r_vboModels.Get() || !model->numVBOSurfaces ||
 	     ( !glConfig2.vboVertexSkinningAvailable && ent->e.skeleton.type == refSkeletonType_t::SK_ABSOLUTE ) )
 	{
 		shader_t *shader;
@@ -983,7 +983,7 @@ void R_AddMD5Interactions( trRefEntity_t *ent, trRefLight_t *light, interactionT
 
 	cubeSideBits = R_CalcLightCubeSideBits( light, ent->worldBounds );
 
-	if ( !r_vboModels->integer || !model->numVBOSurfaces ||
+	if ( !r_vboModels.Get() || !model->numVBOSurfaces ||
 	     ( !glConfig2.vboVertexSkinningAvailable && ent->e.skeleton.type == refSkeletonType_t::SK_ABSOLUTE ) )
 	{
 		shader_t *shader = nullptr;

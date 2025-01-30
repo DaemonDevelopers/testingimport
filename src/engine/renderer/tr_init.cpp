@@ -287,7 +287,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 	cvar_t      *r_vboFaces;
 	cvar_t      *r_vboCurves;
 	cvar_t      *r_vboTriangles;
-	cvar_t      *r_vboModels;
+	Cvar::Cvar<bool> r_vboModels( "r_vboModels", "Use static GPU VBOs/IBOs for models", Cvar::NONE, true );
 	cvar_t      *r_vboVertexSkinning;
 
 	cvar_t      *r_mergeLeafSurfaces;
@@ -1208,7 +1208,7 @@ ScreenshotCmd screenshotPNGRegistration("screenshotPNG", ssFormat_t::SSF_PNG, "p
 		r_vboFaces = Cvar_Get( "r_vboFaces", "1", CVAR_CHEAT );
 		r_vboCurves = Cvar_Get( "r_vboCurves", "1", CVAR_CHEAT );
 		r_vboTriangles = Cvar_Get( "r_vboTriangles", "1", CVAR_CHEAT );
-		r_vboModels = Cvar_Get( "r_vboModels", "1", CVAR_LATCH );
+		Cvar::Latch( r_vboModels );
 		r_vboVertexSkinning = Cvar_Get( "r_vboVertexSkinning", "1",  CVAR_LATCH );
 
 		r_mergeLeafSurfaces = Cvar_Get( "r_mergeLeafSurfaces", "1",  CVAR_LATCH );

@@ -152,13 +152,13 @@ bool R_LoadMD3( model_t *mod, int lod, const void *buffer, const char *modName )
 		LL( md3Surf->ofsXyzNormals );
 		LL( md3Surf->ofsEnd );
 
-		if ( md3Surf->numVerts > SHADER_MAX_VERTEXES )
+		if ( !r_vboModels.Get() && md3Surf->numVerts > SHADER_MAX_VERTEXES )
 		{
 			Sys::Drop( "R_LoadMD3: %s has more than %i verts on a surface (%i)",
 			           modName, SHADER_MAX_VERTEXES, md3Surf->numVerts );
 		}
 
-		if ( md3Surf->numTriangles * 3 > SHADER_MAX_INDEXES )
+		if ( !r_vboModels.Get() && md3Surf->numTriangles * 3 > SHADER_MAX_INDEXES )
 		{
 			Sys::Drop( "R_LoadMD3: %s has more than %i triangles on a surface (%i)",
 			           modName, SHADER_MAX_INDEXES / 3, md3Surf->numTriangles );

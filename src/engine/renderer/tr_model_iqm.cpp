@@ -767,7 +767,7 @@ bool R_LoadIQModel( model_t *mod, const void *buffer, int filesize,
 	}
 
 	// convert data where necessary and create VBO
-	if( r_vboModels->integer && glConfig2.vboVertexSkinningAvailable
+	if( r_vboModels.Get() && glConfig2.vboVertexSkinningAvailable
 	    && IQModel->num_joints <= glConfig2.maxVertexSkinningBones ) {
 
 		uint16_t *boneFactorBuf = (uint16_t*)ri.Hunk_AllocateTempMemory( IQModel->num_vertexes * ( 4 * sizeof(uint16_t) ) );

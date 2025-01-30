@@ -340,7 +340,7 @@ bool R_LoadMD5( model_t *mod, const char *buffer, const char *modName )
 		token = COM_ParseExt2( &buf_p, false );
 		surf->numVerts = atoi( token );
 
-		if ( surf->numVerts > SHADER_MAX_VERTEXES )
+		if ( !r_vboModels.Get() && surf->numVerts > SHADER_MAX_VERTEXES )
 		{
 			Sys::Drop( "R_LoadMD5: '%s' has more than %i verts on a surface (%i)",
 			           modName, SHADER_MAX_VERTEXES, surf->numVerts );
@@ -417,7 +417,7 @@ bool R_LoadMD5( model_t *mod, const char *buffer, const char *modName )
 		token = COM_ParseExt2( &buf_p, false );
 		surf->numTriangles = atoi( token );
 
-		if ( surf->numTriangles > SHADER_MAX_TRIANGLES )
+		if ( !r_vboModels.Get() && surf->numTriangles > SHADER_MAX_TRIANGLES )
 		{
 			Sys::Drop( "R_LoadMD5: '%s' has more than %i triangles on a surface (%i)",
 			           modName, SHADER_MAX_TRIANGLES, surf->numTriangles );

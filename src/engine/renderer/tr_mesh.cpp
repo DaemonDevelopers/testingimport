@@ -306,7 +306,7 @@ void R_AddMDVSurfaces( trRefEntity_t *ent )
 	fogNum = R_FogWorldBox( ent->worldBounds );
 
 	// draw all surfaces
-	if ( r_vboModels->integer && model->numVBOSurfaces )
+	if ( r_vboModels.Get() && model->numVBOSurfaces )
 	{
 		srfVBOMDVMesh_t *vboSurface;
 
@@ -416,7 +416,7 @@ void R_AddMDVInteractions( trRefEntity_t *ent, trRefLight_t *light, interactionT
 	cubeSideBits = R_CalcLightCubeSideBits( light, ent->worldBounds );
 
 	// generate interactions with all surfaces
-	if ( r_vboModels->integer && model->numVBOSurfaces )
+	if ( r_vboModels.Get() && model->numVBOSurfaces )
 	{
 		// new brute force method: just render everthing with static VBOs
 		srfVBOMDVMesh_t *vboSurface;

@@ -2388,7 +2388,6 @@ static void GLimp_InitExtensions()
 		glConfig2.getProgramBinaryAvailable = LOAD_EXTENSION_WITH_TEST( ExtFlag_NONE, ARB_get_program_binary, formats > 0 );
 	}
 
-	glConfig2.bufferStorageAvailable = false;
 	glConfig2.bufferStorageAvailable = LOAD_EXTENSION_WITH_TEST( ExtFlag_NONE, ARB_buffer_storage, r_arb_buffer_storage.Get() );
 
 	// made required since OpenGL 3.1
