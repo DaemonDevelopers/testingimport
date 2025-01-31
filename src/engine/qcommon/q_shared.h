@@ -877,6 +877,38 @@ inline vec_t VectorNormalize2( const vec3_t v, vec3_t out )
 		MatrixFromAngles( m, angles[ PITCH ], angles[ YAW ], angles[ ROLL ] );
 	}
 
+inline void Mat3x2MultiplyScale( matrix_t m, const float x, const float y ) {
+	m[0] *= x;
+	m[4] *= y;
+	m[1] *= x;
+	m[5] *= y;
+}
+
+inline void Mat3x2MultiplyTranslation( matrix_t m, const float x, const float y ) {
+	m[12] += m[0] * x + m[4] * y;
+	m[13] += m[1] * x + m[5] * y;
+}
+
+inline void Mat3x2MultiplyZRotation( matrix_t m, const float degrees ) {
+	float angle = DEG2RAD( degrees );
+	float s = sinf( angle );
+	float c = cosf( angle );
+
+	const float tmp[] = { m[0], m[1], m[4], m[5] };
+	m[0] = tmp[0] * c + tmp[2] * s;
+	m[1] = tmp[1] * c + tmp[3] * s;
+	m[4] = tmp[0] * -s + tmp[2] * c;
+	m[5] = tmp[1] * -s + tmp[3] * c;
+}
+
+inline void Mat3x2MultiplyShear( matrix_t m, const float x, const float y ) {
+	const float tmp[] = { m[0], m[1] };
+	m[0] += m[4] * y;
+	m[1] += m[5] * y;
+	m[4] += tmp[0] * x;
+	m[5] += tmp[1] * x;
+}
+
 //=============================================
 
 // RB: XreaL quaternion math functions required by the renderer

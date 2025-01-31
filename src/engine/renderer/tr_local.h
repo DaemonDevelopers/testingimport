@@ -1007,6 +1007,8 @@ enum class shaderProfilerRenderSubGroupsMode {
 		float scroll[ 2 ]; // s' = s + scroll[0] * time
 		// t' = t + scroll[1] * time
 
+		float scrollPeriod[2]; // 1.0f / scroll
+
 		// + = clockwise
 		// - = counterclockwise
 		float rotateSpeed;
