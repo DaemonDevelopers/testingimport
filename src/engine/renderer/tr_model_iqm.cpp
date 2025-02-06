@@ -408,6 +408,36 @@ static bool LoadIQMFile( const void *buffer, unsigned filesize, const char *mod_
 	return true;
 }
 
+static size_t SanitizeFloatVertexArray( iqmHeader_t *header, iqmVertexArray_t *vertexarray,
+	const char *array_name, const char *mod_name )
+{
+	float *input = ( float* ) IQMPtr( header, vertexarray->offset );
+
+	size_t nanCount = 0;
+
+	for ( size_t i = 0; i < header->num_vertexes; i++, input += vertexarray->size )
+	{
+		for ( size_t j = 0; j < vertexarray->size; j++ )
+		{
+			if ( !Math::IsFinite ( input[ j ] ) )
+			{
+				Log::Debug( "IQM model “%s” has NaN in %s[%d][%d].", mod_name, array_name, i, j );
+				input[ j ] = 0.0f;
+				nanCount++;
+			}
+		}
+	}
+
+	return nanCount;
+}
+
+template<typename T>
+static void CopyVertexArray( iqmHeader_t *header, iqmVertexArray_t *vertexarray, T* dest )
+{
+	size_t n = static_cast<size_t>(header->num_vertexes) * static_cast<size_t>(vertexarray->size);
+	memcpy( dest, IQMPtr( header, vertexarray->offset ), n * sizeof( T ) );
+}
+
 /*
 =================
 BuildTangents
@@ -415,18 +445,20 @@ BuildTangents
 Compute Tangent and Bitangent vectors from the IQM 4-float input data
 =================
 */
-void BuildTangents( int n, float *input, float *normals, float *tangents,
-		    float *bitangents )
+static void BuildTangents( iqmHeader_t *header, iqmVertexArray_t *vertexarray,
+	float *normals, float *tangents, float *bitangents )
 {
-	int i;
-	vec3_t crossProd;
+	float *input = (float*)IQMPtr( header, vertexarray->offset );
 
-	for( i = 0; i < n; i++ ) {
+	for ( int i = 0; i < header->num_vertexes; i++, input += 4 )
+	{
 		VectorCopy( input, tangents );
-		CrossProduct( normals, input, crossProd );
-		VectorScale( crossProd, input[ 3 ], bitangents );
+		float *sign = &input[ 3 ];
 
-		input      += 4;
+		vec3_t crossProd;
+		CrossProduct( normals, tangents, crossProd );
+		VectorScale( crossProd, *sign, bitangents );
+
 		normals    += 3;
 		tangents   += 3;
 		bitangents += 3;
@@ -625,6 +657,8 @@ bool R_LoadIQModel( model_t *mod, const void *buffer, int filesize,
 		IQModel->jointParents[i] = joint->parent;
 	}
 
+	size_t nanCount = 0;
+
 	// calculate pose transforms
 	framedata = ( short unsigned int* )IQMPtr( header, header->ofs_frames );
 	trans = poses;
@@ -634,6 +668,23 @@ bool R_LoadIQModel( model_t *mod, const void *buffer, int filesize,
 			vec3_t	translate;
 			quat_t	rotate;
 			vec3_t	scale;
+
+			for ( size_t k = 0; k < 10; k++ )
+			{
+				if ( !Math::IsFinite ( pose->channeloffset[ k ] ) )
+				{
+					Log::Debug( "IQM model “%s” frame %d has NaN in pose[%d]->channeloffset[%d].", mod_name, i, j, k );
+					pose->channeloffset[ k ] = 0.0f;
+					nanCount++;
+				}
+
+				if ( !Math::IsFinite ( pose->channelscale[ k ] ) )
+				{
+					Log::Debug( "IQM model “%s” frame %d has NaN in pose[%d]->channelscale[%d].", mod_name, i, j, k );
+					pose->channelscale[ k ] = 0.0f;
+					nanCount++;
+				}
+			}
 
 			translate[0] = pose->channeloffset[0];
 			if( pose->mask & 0x001)
@@ -685,72 +736,73 @@ bool R_LoadIQModel( model_t *mod, const void *buffer, int filesize,
 	// copy vertexarrays and indexes
 	vertexarray = static_cast<iqmVertexArray_t*>( IQMPtr( header, header->ofs_vertexarrays ) );
 	for(unsigned i = 0; i < header->num_vertexarrays; i++, vertexarray++ ) {
-		int	n;
-
-		// total number of values
-		n = header->num_vertexes * vertexarray->size;
-
 		switch( vertexarray->type ) {
 		case IQM_POSITION:
 			ClearBounds( IQModel->bounds[ 0 ], IQModel->bounds[ 1 ] );
-			memcpy( IQModel->positions,
-				    IQMPtr( header, vertexarray->offset ),
-				    n * sizeof(float) );
-			for( int j = 0; j < n; j += vertexarray->size ) {
-				AddPointToBounds( &IQModel->positions[ j ],
-						  IQModel->bounds[ 0 ],
-						  IQModel->bounds[ 1 ] );
-			}
-			IQModel->internalScale = BoundsMaxExtent( IQModel->bounds[ 0 ], IQModel->bounds[ 1 ] );
-			if( IQModel->internalScale > 0.0f ) {
-				float inverseScale = 1.0f / IQModel->internalScale;
-				for( int j = 0; j < n; j += vertexarray->size ) {
-					VectorScale( &IQModel->positions[ j ],
-						     inverseScale,
-						     &IQModel->positions[ j ] );
+
+			nanCount += SanitizeFloatVertexArray( header, vertexarray, "position", mod_name );
+			CopyVertexArray( header, vertexarray, IQModel->positions );
+
+			{
+				size_t n = static_cast<size_t>(header->num_vertexes) * static_cast<size_t>(vertexarray->size);
+
+				for ( size_t j = 0; j < n; j += vertexarray->size )
+				{
+					AddPointToBounds( &IQModel->positions[ j ], IQModel->bounds[ 0 ], IQModel->bounds[ 1 ] );
+				}
+
+				IQModel->internalScale = BoundsMaxExtent( IQModel->bounds[ 0 ], IQModel->bounds[ 1 ] );
+
+				if ( IQModel->internalScale > 0.0f )
+				{
+					float inverseScale = 1.0f / IQModel->internalScale;
+
+					for ( size_t j = 0; j < n; j += vertexarray->size )
+					{
+						VectorScale( &IQModel->positions[ j ], inverseScale, &IQModel->positions[ j ] );
+					}
 				}
 			}
 
 			break;
 		case IQM_NORMAL:
-			memcpy( IQModel->normals,
-				    IQMPtr( header, vertexarray->offset ),
-				    n * sizeof(float) );
+			nanCount += SanitizeFloatVertexArray( header, vertexarray, "normal", mod_name );
+			CopyVertexArray( header, vertexarray, IQModel->normals );
 			break;
 		case IQM_TANGENT:
-			BuildTangents( header->num_vertexes,
-				       ( float* )IQMPtr( header, vertexarray->offset ),
-				       IQModel->normals, IQModel->tangents,
-				       IQModel->bitangents );
+			nanCount += SanitizeFloatVertexArray( header, vertexarray, "tangents", mod_name );
+			BuildTangents( header, vertexarray, IQModel->normals, IQModel->tangents, IQModel->bitangents );
 			break;
 		case IQM_TEXCOORD:
-			for( int j = 0; j < n; j++ ) {
-				IQModel->texcoords[ j ] = ((float *)IQMPtr( header, vertexarray->offset ))[ j ];
-			}
+			nanCount += SanitizeFloatVertexArray( header, vertexarray, "texcoord", mod_name );
+			CopyVertexArray( header, vertexarray, IQModel->texcoords );
 			break;
 		case IQM_BLENDINDEXES:
-			memcpy( IQModel->blendIndexes,
-				    IQMPtr( header, vertexarray->offset ),
-				    n * sizeof(byte) );
+			CopyVertexArray( header, vertexarray, IQModel->blendIndexes );
 			break;
 		case IQM_BLENDWEIGHTS:
+			CopyVertexArray( header, vertexarray, IQModel->blendWeights );
 			weights = static_cast<u8vec4_t *>( IQMPtr( header, vertexarray->offset ) );
-			for(unsigned j = 0; j < header->num_vertexes; j++ ) {
-				IQModel->blendWeights[ 4 * j + 0 ] = 255 - weights[ j ][ 1 ] - weights[ j ][ 2 ] - weights[ j ][ 3 ];
-				IQModel->blendWeights[ 4 * j + 1 ] = weights[ j ][ 1 ];
-				IQModel->blendWeights[ 4 * j + 2 ] = weights[ j ][ 2 ];
-				IQModel->blendWeights[ 4 * j + 3 ] = weights[ j ][ 3 ];
-			}
 			break;
 		case IQM_COLOR:
-			memcpy( IQModel->colors,
-				    IQMPtr( header, vertexarray->offset ),
-				    n * sizeof(byte) );
+			CopyVertexArray( header, vertexarray, IQModel->colors );
 			break;
 		}
 	}
 
-	if ( !weights )
+	if ( nanCount )
+	{
+		Log::Warn( "IQM Model “%s” contains %d NaN.", mod_name, nanCount );
+	}
+
+	if ( weights )
+	{
+		for ( unsigned j = 0; j < header->num_vertexes; j++ )
+		{
+			IQModel->blendWeights[ 4 * j + 0 ] = 255 - weights[ j ][ 1 ] - weights[ j ][ 2 ] - weights[ j ][ 3 ];
+		}
+	}
+	else
 	{
 		for ( unsigned j = 0; j < header->num_vertexes; j++ )
 		{
