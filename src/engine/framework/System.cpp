@@ -86,9 +86,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	static Cvar::Cvar<bool> common_floatExceptions_overflow("common.floatExceptions.overflow",
 		"enable floating point exception for operation producing an overflow",
 		Cvar::INIT, false);
-	static Cvar::Cvar<bool> common_floatExceptions_test("common.floatExceptions.test",
-		"test floating point exceptions",
-		Cvar::INIT, false);
 #endif
 
 namespace Sys {
@@ -530,28 +527,6 @@ static void SetFloatingPointExceptions()
 	#if defined(DAEMON_USE_ARCH_INTRINSICS_i686_sse)
 		_MM_SET_EXCEPTION_MASK(_MM_GET_EXCEPTION_MASK() & ~sse_exceptions);
 	#endif
-
-	if (common_floatExceptions_test.Get())
-	{
-		{
-			volatile float f = -1.0f;
-			Log::Warn("Testing of INVALID floating point exception.");
-			Log::Warn("Computing √%.0f…", static_cast<float>(f));
-			Log::Warn("Result of √%.0f: %.0f", static_cast<float>(f), sqrt(f));
-		}
-		{
-			volatile float f = 0.0f;
-			Log::Warn("Testing of DIVBYZERO floating point exception.");
-			Log::Warn("Computing 1÷%.0f…", static_cast<float>(f));
-			Log::Warn("Result of 1÷%.0f: %.0f", static_cast<float>(f), 1/f);
-		}
-		{
-			volatile float f = std::numeric_limits<float>::max();
-			Log::Warn("Testing of OVERFLOW floating point exception.");
-			Log::Warn("Computing 2×%.0f…", static_cast<float>(f));
-			Log::Warn("Result of 2×%.0f: %.0f", static_cast<float>(f), 2*f);
-		}
-	}
 #endif
 }
 
