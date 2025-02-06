@@ -542,8 +542,8 @@ public:
                 .detach();
         } else {
             if (!DoFault(args)) {
-                Print("Usage: %s (drop | error | segfault | intdiv | floatdiv | unreachable"
-                      " | exception | throw | terminate | abort | freeze <seconds>) [thread]",
+                Print("Usage: %s (drop | error | segfault | intdiv | floatinvalid | floatdiv | floatoverflow"
+                      " | unreachable | exception | throw | terminate | abort | freeze <seconds>) [thread]",
                       args.Argv(0));
             }
         }
@@ -573,9 +573,15 @@ private:
         } else if (how == "intdiv") {
             volatile int n = 0;
             n = n / n;
+		} else if (how == "floatinvalid") {
+			volatile float f = -1.0f;
+			f = sqrt(f);
         } else if (how == "floatdiv") {
-            volatile float x = 0;
-            x = x / x;
+            volatile float f = 0;
+            f = 1 / f;
+		} else if (how == "floatoverflow") {
+			volatile float f = std::numeric_limits<float>::max();
+			f = 2 * f;
         } else if (how == "unreachable") { // May print the usage string :)
             UNREACHABLE();
         } else if (how == "exception") { // std::exception
