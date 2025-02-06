@@ -802,6 +802,11 @@ static std::string GenEngineConstants() {
 		AddConst( str, "r_RimExponent", r_rimExponent->value );
 	}
 
+	if ( r_cheapSRGB.Get() )
+	{
+		AddDefine( str, "r_cheapSRGB", 1 );
+	}
+
 	if ( r_showLightTiles->integer )
 	{
 		AddDefine( str, "r_showLightTiles", 1 );
@@ -2261,6 +2266,7 @@ GLShader_generic::GLShader_generic( GLShaderManager *manager ) :
 	u_AlphaThreshold( this ),
 	u_ModelMatrix( this ),
 	u_ModelViewProjectionMatrix( this ),
+	u_LinearizeTexture( this ),
 	u_ColorModulateColorGen( this ),
 	u_Color( this ),
 	u_Bones( this ),
@@ -2293,6 +2299,7 @@ GLShader_genericMaterial::GLShader_genericMaterial( GLShaderManager* manager ) :
 	u_AlphaThreshold( this ),
 	u_ModelMatrix( this ),
 	u_ModelViewProjectionMatrix( this ),
+	u_LinearizeTexture( this ),
 	u_ColorModulateColorGen( this ),
 	u_Color( this ),
 	u_DepthScale( this ),
@@ -2334,6 +2341,7 @@ GLShader_lightMapping::GLShader_lightMapping( GLShaderManager *manager ) :
 	u_ViewOrigin( this ),
 	u_ModelMatrix( this ),
 	u_ModelViewProjectionMatrix( this ),
+	u_LinearizeTexture( this ),
 	u_Bones( this ),
 	u_VertexInterpolation( this ),
 	u_ReliefDepthScale( this ),
@@ -2402,6 +2410,7 @@ GLShader_lightMappingMaterial::GLShader_lightMappingMaterial( GLShaderManager* m
 	u_ViewOrigin( this ),
 	u_ModelMatrix( this ),
 	u_ModelViewProjectionMatrix( this ),
+	u_LinearizeTexture( this ),
 	u_ReliefDepthScale( this ),
 	u_ReliefOffsetBias( this ),
 	u_NormalScale( this ),
@@ -2712,6 +2721,7 @@ GLShader_skybox::GLShader_skybox( GLShaderManager *manager ) :
 	u_CloudHeight( this ),
 	u_UseCloudMap( this ),
 	u_AlphaThreshold( this ),
+	u_LinearizeTexture( this ),
 	u_ModelViewProjectionMatrix( this )
 {
 }
@@ -2730,6 +2740,7 @@ GLShader_skyboxMaterial::GLShader_skyboxMaterial( GLShaderManager* manager ) :
 	u_CloudHeight( this ),
 	u_UseCloudMap( this ),
 	u_AlphaThreshold( this ),
+	u_LinearizeTexture( this ),
 	u_ModelViewProjectionMatrix( this )
 {}
 
@@ -2743,6 +2754,7 @@ GLShader_fogQuake3::GLShader_fogQuake3( GLShaderManager *manager ) :
 	u_FogMap( this ),
 	u_ModelMatrix( this ),
 	u_ModelViewProjectionMatrix( this ),
+	u_LinearizeTexture( this ),
 	u_ColorGlobal( this ),
 	u_Bones( this ),
 	u_VertexInterpolation( this ),
@@ -2765,6 +2777,7 @@ GLShader_fogQuake3Material::GLShader_fogQuake3Material( GLShaderManager* manager
 	u_FogMap( this ),
 	u_ModelMatrix( this ),
 	u_ModelViewProjectionMatrix( this ),
+	u_LinearizeTexture( this ),
 	u_ColorGlobal( this ),
 	u_FogDistanceVector( this ),
 	u_FogDepthVector( this ),
@@ -2782,6 +2795,7 @@ GLShader_fogGlobal::GLShader_fogGlobal( GLShaderManager *manager ) :
 	u_DepthMap( this ),
 	u_ModelViewProjectionMatrix( this ),
 	u_UnprojectMatrix( this ),
+	u_LinearizeTexture( this ),
 	u_Color( this ),
 	u_FogDistanceVector( this )
 {
@@ -2896,7 +2910,8 @@ GLShader_cameraEffects::GLShader_cameraEffects( GLShaderManager *manager ) :
 	u_ColorModulate( this ),
 	u_TextureMatrix( this ),
 	u_ModelViewProjectionMatrix( this ),
-	u_InverseGamma( this )
+	u_InverseGamma( this ),
+	u_DelinearizeScreen( this )
 {
 }
 

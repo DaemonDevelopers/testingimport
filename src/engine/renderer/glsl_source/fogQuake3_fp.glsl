@@ -22,6 +22,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 /* fogQuake3_fp.glsl */
 
+#insert colorSpace
+
 #define FOGQUAKE3_GLSL
 
 uniform sampler2D u_FogMap;
@@ -39,6 +41,8 @@ void	main()
 	vec4 color = texture2D(u_FogMap, var_TexCoords);
 
 	color *= var_Color;
+
+	convertFromSRGB(color.rgb, u_LinearizeTexture);
 
 	outputColor = color;
 

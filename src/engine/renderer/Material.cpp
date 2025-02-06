@@ -158,6 +158,9 @@ void UpdateSurfaceDataGeneric3D( uint32_t* materials, shaderStage_t* pStage, boo
 	Tess_ComputeColor( pStage );
 	gl_genericShaderMaterial->SetUniform_Color( tess.svars.color );
 
+	// u_LinearizeTexture
+	gl_genericShaderMaterial->SetUniform_LinearizeTexture( pStage->linearizeTexture );
+
 	bool hasDepthFade = pStage->hasDepthFade;
 	if ( hasDepthFade ) {
 		gl_genericShaderMaterial->SetUniform_DepthScale( pStage->depthFadeValue );
@@ -190,6 +193,9 @@ void UpdateSurfaceDataLightMapping( uint32_t* materials, shaderStage_t* pStage, 
 
 	// u_AlphaThreshold
 	gl_lightMappingShaderMaterial->SetUniform_AlphaTest( pStage->stateBits );
+
+	// u_LinearizeTexture
+	gl_lightMappingShaderMaterial->SetUniform_LinearizeTexture( pStage->linearizeTexture );
 
 	// HeightMap
 	if ( pStage->enableReliefMapping ) {
@@ -268,6 +274,9 @@ void UpdateSurfaceDataSkybox( uint32_t* materials, shaderStage_t* pStage, bool, 
 	gl_skyboxShaderMaterial->SetUniform_AlphaTest( GLS_ATEST_NONE );
 
 	gl_skyboxShaderMaterial->WriteUniformsToBuffer( materials );
+
+	// u_LinearizeTexture
+	gl_skyboxShaderMaterial->SetUniform_LinearizeTexture( pStage->linearizeTexture );
 }
 
 void UpdateSurfaceDataScreen( uint32_t* materials, shaderStage_t* pStage, bool, bool, bool ) {
@@ -360,6 +369,8 @@ void UpdateSurfaceDataFog( uint32_t* materials, shaderStage_t* pStage, bool, boo
 	materials += pStage->bufferOffset;
 
 	gl_fogQuake3ShaderMaterial->WriteUniformsToBuffer( materials );
+
+	gl_fogQuake3ShaderMaterial->SetUniform_LinearizeTexture( tr.worldLinearizeTexture );
 }
 
 /*

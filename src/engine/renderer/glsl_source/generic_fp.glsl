@@ -22,6 +22,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 /* generic_fp.glsl */
 
+#insert colorSpace
+
 #define GENERIC_GLSL
 
 uniform sampler2D	u_ColorMap;
@@ -62,6 +64,10 @@ void	main()
 		discard;
 		return;
 	}
+
+#if !defined(GENERIC_2D)
+	convertFromSRGB(color.rgb, u_LinearizeTexture);
+#endif
 
 #if defined(USE_DEPTH_FADE)
 	float depth = texture2D(u_DepthMap, gl_FragCoord.xy / r_FBufSize).x;

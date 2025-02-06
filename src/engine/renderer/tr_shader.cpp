@@ -3233,6 +3233,10 @@ static bool ParseStage( shaderStage_t *stage, const char **text )
 		{
 			ParseExpression( text, &stage->deformMagnitudeExp );
 		}
+		else if ( !Q_stricmp( token, "specularSRGB" ) )
+		{
+			stage->specularSRGB = true;
+		}
 		else
 		{
 			Log::Warn("unknown shader stage parameter '%s' in shader '%s'", token, shader.name );
@@ -4757,6 +4761,15 @@ static bool ParseShader( const char *_text )
 	return true;
 }
 
+static int packLinearizeTexture( bool linearizeColorMap, bool linearizeMaterialMap, bool linearizeLightMap )
+{
+	/* HACK: emulate three-bits bitfield
+	even: no color map linearization (first bit)
+	less than 2: no light map linearization (second bit)
+	positive: no material map linearization (extra bit) */
+	return ( int(linearizeColorMap) + ( 2 * int(linearizeLightMap) ) ) * ( linearizeMaterialMap ? -1 : 1 );
+}
+
 /*
 ========================================================================================
 
@@ -5298,6 +5311,33 @@ static void FinishStages()
 		// see https://github.com/DaemonEngine/Daemon/issues/376
 		stage->hasHeightMapInNormalMap = stage->hasHeightMapInNormalMap
 			&& ( stage->enableNormalMapping || stage->enableReliefMapping );
+
+		switch ( stage->type )
+		{
+			case stageType_t::ST_COLORMAP:
+			case stageType_t::ST_COLLAPSE_COLORMAP:
+			case stageType_t::ST_SKYBOXMAP:
+				stage->linearizeTexture = tr.worldLinearizeTexture;
+				break;
+			case stageType_t::ST_STYLELIGHTMAP:
+			case stageType_t::ST_STYLECOLORMAP:
+				stage->linearizeTexture = tr.worldLinearizeLightMap;
+				break;
+			case stageType_t::ST_LIGHTMAP:
+				stage->linearizeTexture = packLinearizeTexture( false, false, tr.worldLinearizeLightMap );
+				break;
+			case stageType_t::ST_DIFFUSEMAP:
+			case stageType_t::ST_COLLAPSE_DIFFUSEMAP:
+				stage->linearizeTexture = packLinearizeTexture(
+					tr.worldLinearizeTexture,
+					hasMaterialMap
+						&& stage->collapseType == collapseType_t::COLLAPSE_PHONG
+						&& stage->specularSRGB,
+					tr.worldLinearizeLightMap );
+				break;
+			default:
+				break;
+		}
 
 		// Bind fallback textures if required.
 		if ( !stage->enableNormalMapping && !( stage->enableReliefMapping && stage->hasHeightMapInNormalMap) )
