@@ -699,9 +699,15 @@ inline vec_t VectorNormalize( vec3_t v )
 // that length != 0, nor does it return length
 inline void VectorNormalizeFast( vec3_t v )
 {
-	vec_t ilength = Q_rsqrt_fast( DotProduct( v, v ) );
+	vec_t length = DotProduct( v, v );
 
-	VectorScale( v, ilength, v );
+#if DAEMON_USE_FLOAT_EXCEPTIONS
+	if ( length )
+#endif
+	{
+		vec_t ilength = Q_rsqrt_fast( length );
+		VectorScale( v, ilength, v );
+	}
 }
 
 inline vec_t VectorNormalize2( const vec3_t v, vec3_t out )
