@@ -402,7 +402,7 @@ static const char *SkipWhitespace( const char *data, bool *hasNewLines )
 			return nullptr;
 		}
 
-		if ( c == '\n' )
+		if ( c == '\n' || c == '\r' )
 		{
 			com_lines++;
 			*hasNewLines = true;
