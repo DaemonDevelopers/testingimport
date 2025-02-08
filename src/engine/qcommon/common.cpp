@@ -64,6 +64,8 @@ Cvar::Cvar<bool> cvar_demo_timedemo(
 cvar_t *com_sv_running;
 cvar_t *com_cl_running;
 cvar_t *com_version;
+Cvar::Cvar<std::string> com_engineVersion( "com_engineVersion", "Engine version used by the server",
+	Cvar::ROM | Cvar::SERVERINFO, ENGINE_VERSION );
 
 cvar_t *com_unfocused;
 cvar_t *com_minimized;

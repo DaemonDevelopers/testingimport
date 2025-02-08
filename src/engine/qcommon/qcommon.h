@@ -531,6 +531,7 @@ extern cvar_t       *com_timescale;
 extern cvar_t       *com_sv_running;
 extern cvar_t       *com_cl_running;
 extern cvar_t       *com_version;
+extern Cvar::Cvar<std::string> com_engineVersion;
 
 extern Cvar::Cvar<std::string> com_consoleCommand;
 

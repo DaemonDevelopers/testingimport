@@ -587,6 +587,8 @@ static void SVC_Info( const netadr_t& from, const Cmd::Args& args )
 	info_map["hostname"] = sv_hostname->string;
 	info_map["serverload"] = std::to_string( svs.serverLoad );
 	info_map["mapname"] = sv_mapname->string;
+	info_map["version"] = com_engineVersion.Get();
+	info_map["abiVersion"] = IPC::SYSCALL_ABI_VERSION;
 	info_map["clients"] = std::to_string( publicSlotHumans + privateSlotHumans );
 	info_map["bots"] = std::to_string( bots );
 	// Satisfies (number of open public slots) = (displayed max clients) - (number of clients).
