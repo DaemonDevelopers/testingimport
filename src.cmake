@@ -148,6 +148,7 @@ set(GLSLSOURCELIST
     ${ENGINE_DIR}/renderer/glsl_source/cull_cp.glsl
     ${ENGINE_DIR}/renderer/glsl_source/depthReduction_cp.glsl
     ${ENGINE_DIR}/renderer/glsl_source/processSurfaces_cp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/material_cp.glsl
     ${ENGINE_DIR}/renderer/glsl_source/material_vp.glsl
     ${ENGINE_DIR}/renderer/glsl_source/material_fp.glsl
     ${ENGINE_DIR}/renderer/glsl_source/skybox_vp.glsl
@@ -161,6 +162,7 @@ set(GLSLSOURCELIST
     ${ENGINE_DIR}/renderer/glsl_source/cameraEffects_fp.glsl
     ${ENGINE_DIR}/renderer/glsl_source/cameraEffects_vp.glsl
     ${ENGINE_DIR}/renderer/glsl_source/computeLight_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/luminanceReduction_cp.glsl
     ${ENGINE_DIR}/renderer/glsl_source/contrast_fp.glsl
     ${ENGINE_DIR}/renderer/glsl_source/contrast_vp.glsl
     ${ENGINE_DIR}/renderer/glsl_source/debugShadowMap_fp.glsl

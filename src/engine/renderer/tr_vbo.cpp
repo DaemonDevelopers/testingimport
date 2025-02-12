@@ -756,6 +756,8 @@ void R_InitVBOs()
 		geometryCache.InitGLBuffers();
 	}
 
+	luminanceBuffer.GenBuffer();
+
 	GL_CheckErrors();
 }
 
@@ -819,6 +821,8 @@ void R_ShutdownVBOs()
 		glDeleteBuffers( 1, &tr.dlightUBO );
 		tr.dlightUBO = 0;
 	}
+
+	luminanceBuffer.DelBuffer();
 
 	if ( glConfig2.usingMaterialSystem ) {
 		materialSystem.FreeGLBuffers();

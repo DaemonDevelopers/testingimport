@@ -2571,10 +2571,8 @@ static void R_CreateBloomRenderFBOImages()
 
 static void R_CreateCurrentRenderImage()
 {
-	int  width, height;
-
-	width = glConfig.vidWidth;
-	height = glConfig.vidHeight;
+	int width = glConfig.vidWidth;
+	int height = glConfig.vidHeight;
 
 	imageParams_t imageParams = {};
 	imageParams.bits = IF_NOPICMIP;

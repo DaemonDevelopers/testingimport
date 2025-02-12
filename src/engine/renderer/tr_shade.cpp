@@ -271,6 +271,10 @@ static void GLSL_InitGPUShadersOrError()
 		}
 	}
 
+	if ( glConfig2.adaptiveExposureAvailable ) {
+		gl_shaderManager.load( gl_luminanceReductionShader );
+	}
+
 	if ( glConfig2.reflectionMappingAvailable )
 	{
 		// bumped cubemap reflection for abitrary polygons ( EMBM )

@@ -28,6 +28,10 @@ uniform sampler2D u_CurrentMap;
 uniform sampler3D u_ColorMap3D;
 #endif
 
+layout(std140, binding = BIND_LUMINANCE) uniform ub_LuminanceUBO {
+	uint luminanceU;
+};
+
 uniform vec4      u_ColorModulate;
 uniform float     u_InverseGamma;
 
@@ -35,11 +39,15 @@ IN(smooth) vec2		var_TexCoords;
 
 DECLARE_OUTPUT(vec4)
 
+uniform uint u_ViewWidth;
+uniform uint u_ViewHeight;
+
+uniform bool u_Tonemap;
+uniform bool u_TonemapAdaptiveExposure;
 /* x: contrast
 y: highlightsCompressionSpeed
 z: shoulderClip
 w: highlightsCompression */
-uniform bool u_Tonemap;
 uniform vec4 u_TonemapParms;
 uniform float u_TonemapExposure;
 
@@ -57,6 +65,11 @@ void main()
 	vec4 color = texture2D(u_CurrentMap, st);
 
 	if( u_Tonemap ) {
+		if( u_TonemapAdaptiveExposure ) {
+			const float l = float( luminanceU ) / ( 256.0f * u_ViewWidth * u_ViewHeight ) - 8;
+			color.rgb *= clamp( 0.18f / exp2( l * 0.8f + 0.1f ), 0.0f, 2.0f );
+		}
+
 		color.rgb = TonemapLottes( color.rgb * u_TonemapExposure );
 	}
 	color.rgb = clamp( color.rgb, vec3( 0.0f ), vec3( 1.0f ) );
@@ -74,4 +87,5 @@ void main()
 	color.xyz = pow(color.xyz, vec3(u_InverseGamma));
 
 	outputColor = color;
+	// outputColor = vec4( luminance, color.yzw );
 }

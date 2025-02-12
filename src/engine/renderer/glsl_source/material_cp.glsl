@@ -2,7 +2,7 @@
 ===========================================================================
 
 Daemon BSD Source Code
-Copyright (c) 2024 Daemon Developers
+Copyright (c) 2025 Daemon Developers
 All rights reserved.
 
 This file is part of the Daemon BSD Source Code (Daemon Source Code).
@@ -32,36 +32,41 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ===========================================================================
 */
 
-/* common_cp.glsl */
+/* material_cp.glsl */
 
-/* Common defines */
+struct BoundingSphere {
+	vec3 origin;
+	float radius;
+};
 
-/* Allows accessing each element of a uvec4 array with a singular ID
-Useful to avoid wasting memory due to alignment requirements
-array must be in the form of uvec4 array[] */
+struct SurfaceDescriptor {
+	BoundingSphere boundingSphere;
+	uint surfaceCommandIDs[MAX_SURFACE_COMMANDS];
+};
 
-#define UINT_FROM_UVEC4_ARRAY( array, id ) ( array[id / 4][id % 4] )
-#define UVEC2_FROM_UVEC4_ARRAY( array, id ) ( id % 2 == 0 ? array[id / 2].xy : array[id / 2].zw )
+struct PortalSurface {
+	BoundingSphere boundingSphere;
 
-// Scalar global workgroup ID
-#define GLOBAL_GROUP_ID ( gl_WorkGroupID.z * gl_NumWorkGroups.x * gl_NumWorkGroups.y\
-                        + gl_WorkGroupID.y * gl_NumWorkGroups.x\
-                        + gl_WorkGroupID.x )
-						
-// Scalar global invocation ID
-#define GLOBAL_INVOCATION_ID ( gl_GlobalInvocationID.z * gl_NumWorkGroups.x * gl_WorkGroupSize.x\
-                             * gl_NumWorkGroups.y * gl_WorkGroupSize.y\
-                             + gl_GlobalInvocationID.y * gl_NumWorkGroups.x * gl_WorkGroupSize.x\
-                             + gl_GlobalInvocationID.x )
+	uint drawSurfID;
+	float distance;
+	vec2 padding;
+};
 
-/* Macro combinations for subgroup ops */
+struct GLIndirectCommand {
+	uint count;
+	uint instanceCount;
+	uint firstIndex;
+	int baseVertex;
+	uint baseInstance;
+};
 
-#if defined(HAVE_KHR_shader_subgroup_basic) && defined(HAVE_KHR_shader_subgroup_arithmetic)\
-	&& defined(HAVE_ARB_shader_atomic_counter_ops)
-	#define HAVE_subgroup_atomic
-#endif
+struct IndirectCompactCommand {
+	uint count;
+	uint firstIndex;
+	uint baseInstance;
+};
 
-#if defined(HAVE_KHR_shader_subgroup_basic) && defined(HAVE_KHR_shader_subgroup_arithmetic)\
-	&& defined(HAVE_KHR_shader_subgroup_ballot) && defined(HAVE_ARB_shader_atomic_counter_ops)
-	#define HAVE_subgroup_stream_compaction
-#endif
+struct SurfaceCommand {
+	bool enabled;
+	IndirectCompactCommand drawCommand;
+};

@@ -2986,6 +2986,7 @@ enum class shaderProfilerRenderSubGroupsMode {
 	extern cvar_t *r_gamma;
 
 	extern Cvar::Cvar<bool> r_tonemap;
+	extern Cvar::Cvar<bool> r_tonemapAdaptiveExposure;
 	extern Cvar::Cvar<float> r_tonemapExposure;
 	extern Cvar::Range<Cvar::Cvar<float>> r_tonemapContrast;
 	extern Cvar::Range<Cvar::Cvar<float>> r_tonemapHighlightsCompressionSpeed;
