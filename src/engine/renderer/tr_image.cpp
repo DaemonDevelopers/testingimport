@@ -1853,7 +1853,7 @@ image_t *R_FindImageFile( const char *imageName, imageParams_t &imageParams )
 		return nullptr;
 	}
 
-	if ( imageParams.bits & IF_LIGHTMAP && tr.legacyOverBrightClamping )
+	if ( imageParams.bits & IF_LIGHTMAP )
 	{
 		R_ProcessLightmap( *pic, width, height, imageParams.bits );
 	}
@@ -3054,6 +3054,7 @@ void R_InitImages()
 	tr.lightmaps.reserve( 128 );
 	tr.deluxemaps.reserve( 128 );
 
+	//TODO rewrite WoT with new info :)
 	/* These are the values expected by the rest of the renderer
 	(esp. tr_bsp), used for "gamma correction of the map".
 	Both were set to 0 if we had neither COMPAT_ET nor COMPAT_Q3,
@@ -3113,8 +3114,9 @@ void R_InitImages()
 	Because tr.overbrightBits is always 0, tr.identityLight is
 	always 1.0f. We can entirely remove it. */
 
+	// TODO is there any reason to set these before a map is loaded?
 	tr.mapOverBrightBits = r_overbrightDefaultExponent.Get();
-	tr.legacyOverBrightClamping = r_overbrightDefaultClamp.Get();
+	tr.overbrightBits = std::min(tr.mapOverBrightBits, r_overbrightBits.Get());
 
 	// create default texture and white texture
 	R_CreateBuiltinImages();
