@@ -88,11 +88,6 @@ struct iqmanim
     unsigned int flags;
 };
 
-enum
-{
-    IQM_LOOP = 1<<0
-};
-
 struct iqmvertexarray
 {
     unsigned int type;

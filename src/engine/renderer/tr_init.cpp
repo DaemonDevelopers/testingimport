@@ -1708,6 +1708,7 @@ ScreenshotCmd screenshotPNGRegistration("screenshotPNG", ssFormat_t::SSF_PNG, "p
 		re.RegisterAnimation = RE_RegisterAnimation;
 		re.CheckSkeleton = RE_CheckSkeleton;
 		re.BuildSkeleton = RE_BuildSkeleton;
+		re.GetAnimation = RE_GetAnimation;
 		re.BlendSkeleton = RE_BlendSkeleton;
 		re.BoneIndex = RE_BoneIndex;
 		re.AnimNumFrames = RE_AnimNumFrames;

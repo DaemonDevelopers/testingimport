@@ -138,6 +138,9 @@ int RE_BuildSkeleton( refSkeleton_t *skel, qhandle_t, int, int, float, bool )
 	skel->numBones = 0;
 	return 1;
 }
+skelAnimation_t RE_GetAnimation( qhandle_t ) {
+    return skelAnimation_t{};
+}
 int RE_BlendSkeleton( refSkeleton_t*, const refSkeleton_t*, float )
 {
 	return 1;
@@ -261,6 +264,7 @@ refexport_t    *GetRefAPI( int, refimport_t* )
     re.RegisterAnimation = RE_RegisterAnimation;
     re.CheckSkeleton = RE_CheckSkeleton;
     re.BuildSkeleton = RE_BuildSkeleton;
+    re.GetAnimation = RE_GetAnimation;
     re.BlendSkeleton = RE_BlendSkeleton;
     re.BoneIndex = RE_BoneIndex;
     re.AnimNumFrames = RE_AnimNumFrames;

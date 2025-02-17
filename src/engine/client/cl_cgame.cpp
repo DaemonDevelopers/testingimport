@@ -1261,6 +1261,24 @@ void CGameVM::QVMSyscall(int syscallNum, Util::Reader& reader, IPC::Channel& cha
 			});
 			break;
 
+		case CG_R_GETANIMATION:
+			IPC::HandleMsg<Render::GetAnimationMsg>( channel, std::move( reader ), [this]( int anim, skelAnimation_t& res ) {
+				res = re.GetAnimation( anim );
+			});
+			break;
+
+		case CG_R_BATCHGETANIMATION:
+			IPC::HandleMsg<Render::BatchGetAnimationsMsg>( channel, std::move( reader ), [this](
+				const std::vector<qhandle_t>& anims,
+				std::vector<skelAnimation_t>& skelAnimations ) {
+					skelAnimations.reserve( anims.size() );
+
+					for ( const qhandle_t anim : anims ) {
+						skelAnimations.push_back( re.GetAnimation( anim ) );
+					}
+			});
+			break;
+
 		case CG_R_BONEINDEX:
 			IPC::HandleMsg<Render::BoneIndexMsg>(channel, std::move(reader), [this] (int model, const std::string& boneName, int& index) {
 				index = re.BoneIndex(model, boneName.c_str());

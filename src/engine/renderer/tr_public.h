@@ -247,6 +247,7 @@ struct refexport_t
 	int ( *CheckSkeleton )( refSkeleton_t *skel, qhandle_t model, qhandle_t anim );
 	int ( *BuildSkeleton )( refSkeleton_t *skel, qhandle_t anim, int startFrame, int endFrame, float frac,
 	                        bool clearOrigin );
+	skelAnimation_t ( *GetAnimation )( qhandle_t anim );
 	int ( *BlendSkeleton )( refSkeleton_t *skel, const refSkeleton_t *blend, float frac );
 	int ( *BoneIndex )( qhandle_t hModel, const char *boneName );
 	int ( *AnimNumFrames )( qhandle_t hAnim );

@@ -185,6 +185,8 @@ enum cgameImport_t
   CG_R_LIGHTFORPOINT,
   CG_R_REGISTERANIMATION,
   CG_R_BUILDSKELETON,
+  CG_R_GETANIMATION,
+  CG_R_BATCHGETANIMATION,
   CG_R_BONEINDEX,
   CG_R_ANIMNUMFRAMES,
   CG_R_ANIMFRAMERATE,
@@ -343,6 +345,14 @@ namespace Render {
 	using BuildSkeletonMsg = IPC::SyncMessage<
 		IPC::Message<IPC::Id<VM::QVM, CG_R_BUILDSKELETON>, int, int, int, float, bool>,
 		IPC::Reply<refSkeleton_t, int>
+	>;
+	using GetAnimationMsg = IPC::SyncMessage<
+		IPC::Message<IPC::Id<VM::QVM, CG_R_GETANIMATION>, int>,
+		IPC::Reply<skelAnimation_t>
+	>;
+	using BatchGetAnimationsMsg = IPC::SyncMessage<
+		IPC::Message<IPC::Id<VM::QVM, CG_R_BATCHGETANIMATION>, std::vector<qhandle_t>>,
+		IPC::Reply<std::vector<skelAnimation_t>>
 	>;
 	using BoneIndexMsg = IPC::SyncMessage<
 		IPC::Message<IPC::Id<VM::QVM, CG_R_BONEINDEX>, int, std::string>,

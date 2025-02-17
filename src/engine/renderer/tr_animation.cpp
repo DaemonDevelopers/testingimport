@@ -1468,6 +1468,20 @@ int RE_BuildSkeleton( refSkeleton_t *skel, qhandle_t hAnim, int startFrame, int 
 	return false;
 }
 
+skelAnimation_t RE_GetAnimation( qhandle_t index ) {
+	skelAnimation_t* anim;
+
+	// out of range gets the default animation
+	if ( index < 0 || index >= tr.numAnimations ) {
+		Log::Warn( "R_GetAnimationByHandle: index=%d out of range", index );
+		anim = tr.animations[0];
+	} else {
+		anim = tr.animations[index];
+	}
+
+	return *anim;
+}
+
 /*
 ==============
 RE_BlendSkeleton

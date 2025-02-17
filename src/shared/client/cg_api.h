@@ -108,6 +108,8 @@ std::vector<bool> trap_R_BatchInPVS(
 
 int             trap_R_LightForPoint( vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir );
 qhandle_t       trap_R_RegisterAnimation( const char *name );
+std::vector<skelAnimation_t> trap_R_BatchGetAnimations( const std::vector<qhandle_t>& anims );
+int             trap_R_BuildSkeleton2( refSkeleton_t* skel, skelAnimation_t* anim, int startFrame, int endFrame, float frac, bool clearOrigin );
 int             trap_R_BuildSkeleton( refSkeleton_t *skel, qhandle_t anim, int startFrame, int endFrame, float frac, bool clearOrigin );
 int             trap_R_BlendSkeleton( refSkeleton_t *skel, const refSkeleton_t *blend, float frac );
 int             trap_R_BoneIndex( qhandle_t hModel, const char *boneName );

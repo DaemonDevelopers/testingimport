@@ -161,6 +161,78 @@ struct alignas(16) refSkeleton_t
 
 // XreaL END
 
+struct md5Channel_t {
+	char     name[MAX_QPATH];
+	int8_t   parentIndex;
+
+	uint8_t  componentsBits; // e.g. (COMPONENT_BIT_TX | COMPONENT_BIT_TY | COMPONENT_BIT_TZ)
+	uint16_t componentsOffset;
+
+	vec3_t   baseOrigin;
+	quat_t   baseQuat;
+};
+
+struct md5Frame_t {
+	vec3_t bounds[2]; // bounds of all surfaces of all LODs for this frame
+	float* components; // numAnimatedComponents many
+};
+
+struct md5Animation_t {
+	uint16_t     numFrames;
+	md5Frame_t* frames;
+
+	uint8_t      numChannels; // same as numBones in model
+	md5Channel_t* channels;
+
+	int16_t      frameRate;
+
+	uint32_t     numAnimatedComponents;
+};
+
+struct IQAnim_t {
+	int             num_frames;
+	int             num_joints;
+	int             framerate;
+	int             flags;
+
+	// skeleton data
+	int* jointParents;
+	transform_t* poses;
+	float* bounds;
+	char* name;
+	char* jointNames;
+};
+
+enum {
+	IQM_LOOP = 1 << 0
+};
+
+enum class animType_t {
+	AT_BAD,
+	AT_MD5,
+	AT_IQM,
+};
+
+enum {
+	COMPONENT_BIT_TX = 1 << 0,
+	COMPONENT_BIT_TY = 1 << 1,
+	COMPONENT_BIT_TZ = 1 << 2,
+	COMPONENT_BIT_QX = 1 << 3,
+	COMPONENT_BIT_QY = 1 << 4,
+	COMPONENT_BIT_QZ = 1 << 5
+};
+
+struct skelAnimation_t {
+	char           name[MAX_QPATH]; // game path, including extension
+	animType_t     type;
+	int            index; // anim = tr.animations[anim->index]
+
+	union {
+		md5Animation_t* md5;
+		IQAnim_t* iqm;
+	};
+};
+
 struct refEntity_t
 {
 	refEntityType_t reType;

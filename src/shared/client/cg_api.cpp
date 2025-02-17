@@ -438,10 +438,227 @@ qhandle_t trap_R_RegisterAnimation( const char *name )
 	return handle;
 }
 
+skelAnimation_t trap_R_GetAnimation( qhandle_t anim ) {
+	skelAnimation_t result;
+	VM::SendMsg<Render::GetAnimationMsg>( anim, result );
+	return result;
+}
+
+std::vector<skelAnimation_t> trap_R_BatchGetAnimations( const std::vector<qhandle_t>& anims ) {
+	std::vector<skelAnimation_t> skelAnimations;
+	VM::SendMsg<Render::BatchGetAnimationsMsg>( anims, skelAnimations );
+	return skelAnimations;
+}
+
+static int IQMBuildSkeleton( refSkeleton_t* skel, skelAnimation_t* skelAnim,
+	int startFrame, int endFrame, float frac ) {
+	int            i;
+	IQAnim_t* anim;
+	transform_t* newPose, * oldPose;
+	vec3_t         mins, maxs;
+
+	anim = skelAnim->iqm;
+
+	// Validate the frames so there is no chance of a crash.
+	// This will write directly into the entity structure, so
+	// when the surfaces are rendered, they don't need to be
+	// range checked again.
+	if ( anim->flags & IQM_LOOP ) {
+		startFrame %= anim->num_frames;
+		endFrame %= anim->num_frames;
+	} else {
+		startFrame = Math::Clamp( startFrame, 0, anim->num_frames - 1 );
+		endFrame = Math::Clamp( endFrame, 0, anim->num_frames - 1 );
+	}
+
+	// compute frame pointers
+	oldPose = &anim->poses[startFrame * anim->num_joints];
+	newPose = &anim->poses[endFrame * anim->num_joints];
+
+	// calculate a bounding box in the current coordinate system
+	if ( anim->bounds ) {
+		float* bounds = &anim->bounds[6 * startFrame];
+		VectorCopy( bounds, mins );
+		VectorCopy( bounds + 3, maxs );
+
+		bounds = &anim->bounds[6 * endFrame];
+		BoundsAdd( mins, maxs, bounds, bounds + 3 );
+	}
+
+#if defined( REFBONE_NAMES )
+	const char* boneNames = anim->jointNames;
+#endif
+	for ( i = 0; i < anim->num_joints; i++ ) {
+		TransStartLerp( &skel->bones[i].t );
+		TransAddWeight( 1.0f - frac, &oldPose[i], &skel->bones[i].t );
+		TransAddWeight( frac, &newPose[i], &skel->bones[i].t );
+		TransEndLerp( &skel->bones[i].t );
+
+#if defined( REFBONE_NAMES )
+		Q_strncpyz( skel->bones[i].name, boneNames, sizeof( skel->bones[i].name ) );
+		boneNames += strlen( boneNames ) + 1;
+#endif
+
+		skel->bones[i].parentIndex = anim->jointParents[i];
+	}
+
+	skel->numBones = anim->num_joints;
+	skel->type = refSkeletonType_t::SK_RELATIVE;
+	VectorCopy( mins, skel->bounds[0] );
+	VectorCopy( maxs, skel->bounds[1] );
+	return true;
+}
+
+static int BuildSkeleton( refSkeleton_t* skel, skelAnimation_t* skelAnim, int startFrame, int endFrame, float frac, bool clearOrigin ) {
+	if ( skelAnim->type == animType_t::AT_IQM && skelAnim->iqm ) {
+		return IQMBuildSkeleton( skel, skelAnim, startFrame, endFrame, frac );
+	} else if ( skelAnim->type == animType_t::AT_MD5 && skelAnim->md5 ) {
+		int            i;
+		md5Animation_t* anim;
+		md5Channel_t* channel;
+		md5Frame_t* newFrame, * oldFrame;
+		vec3_t         newOrigin, oldOrigin, lerpedOrigin;
+		quat_t         newQuat, oldQuat, lerpedQuat;
+		int            componentsApplied;
+
+		anim = skelAnim->md5;
+
+		// Validate the frames so there is no chance of a crash.
+		// This will write directly into the entity structure, so
+		// when the surfaces are rendered, they don't need to be
+		// range checked again.
+
+		/*
+		   if((startFrame >= anim->numFrames) || (startFrame < 0) || (endFrame >= anim->numFrames) || (endFrame < 0))
+		   {
+		   Log::Debug("RE_BuildSkeleton: no such frame %d to %d for '%s'", startFrame, endFrame, anim->name);
+		   //startFrame = 0;
+		   //endFrame = 0;
+		   }
+		 */
+
+		startFrame = Math::Clamp( startFrame, 0, anim->numFrames - 1 );
+		endFrame = Math::Clamp( endFrame, 0, anim->numFrames - 1 );
+
+		// compute frame pointers
+		oldFrame = &anim->frames[startFrame];
+		newFrame = &anim->frames[endFrame];
+
+		// calculate a bounding box in the current coordinate system
+		for ( i = 0; i < 3; i++ ) {
+			skel->bounds[0][i] =
+				oldFrame->bounds[0][i] < newFrame->bounds[0][i] ? oldFrame->bounds[0][i] : newFrame->bounds[0][i];
+			skel->bounds[1][i] =
+				oldFrame->bounds[1][i] > newFrame->bounds[1][i] ? oldFrame->bounds[1][i] : newFrame->bounds[1][i];
+		}
+
+		for ( i = 0, channel = anim->channels; i < anim->numChannels; i++, channel++ ) {
+			// set baseframe values
+			VectorCopy( channel->baseOrigin, newOrigin );
+			VectorCopy( channel->baseOrigin, oldOrigin );
+
+			QuatCopy( channel->baseQuat, newQuat );
+			QuatCopy( channel->baseQuat, oldQuat );
+
+			componentsApplied = 0;
+
+			// update tranlation bits
+			if ( channel->componentsBits & COMPONENT_BIT_TX ) {
+				oldOrigin[0] = oldFrame->components[channel->componentsOffset + componentsApplied];
+				newOrigin[0] = newFrame->components[channel->componentsOffset + componentsApplied];
+				componentsApplied++;
+			}
+
+			if ( channel->componentsBits & COMPONENT_BIT_TY ) {
+				oldOrigin[1] = oldFrame->components[channel->componentsOffset + componentsApplied];
+				newOrigin[1] = newFrame->components[channel->componentsOffset + componentsApplied];
+				componentsApplied++;
+			}
+
+			if ( channel->componentsBits & COMPONENT_BIT_TZ ) {
+				oldOrigin[2] = oldFrame->components[channel->componentsOffset + componentsApplied];
+				newOrigin[2] = newFrame->components[channel->componentsOffset + componentsApplied];
+				componentsApplied++;
+			}
+
+			// update quaternion rotation bits
+			if ( channel->componentsBits & COMPONENT_BIT_QX ) {
+				( ( vec_t* ) oldQuat )[0] = oldFrame->components[channel->componentsOffset + componentsApplied];
+				( ( vec_t* ) newQuat )[0] = newFrame->components[channel->componentsOffset + componentsApplied];
+				componentsApplied++;
+			}
+
+			if ( channel->componentsBits & COMPONENT_BIT_QY ) {
+				( ( vec_t* ) oldQuat )[1] = oldFrame->components[channel->componentsOffset + componentsApplied];
+				( ( vec_t* ) newQuat )[1] = newFrame->components[channel->componentsOffset + componentsApplied];
+				componentsApplied++;
+			}
+
+			if ( channel->componentsBits & COMPONENT_BIT_QZ ) {
+				( ( vec_t* ) oldQuat )[2] = oldFrame->components[channel->componentsOffset + componentsApplied];
+				( ( vec_t* ) newQuat )[2] = newFrame->components[channel->componentsOffset + componentsApplied];
+			}
+
+			QuatCalcW( oldQuat );
+			QuatNormalize( oldQuat );
+
+			QuatCalcW( newQuat );
+			QuatNormalize( newQuat );
+
+#if 1
+			VectorLerp( oldOrigin, newOrigin, frac, lerpedOrigin );
+			QuatSlerp( oldQuat, newQuat, frac, lerpedQuat );
+#else
+			VectorCopy( newOrigin, lerpedOrigin );
+			QuatCopy( newQuat, lerpedQuat );
+#endif
+
+			// copy lerped information to the bone + extra data
+			skel->bones[i].parentIndex = channel->parentIndex;
+
+			if ( channel->parentIndex < 0 && clearOrigin ) {
+				VectorClear( skel->bones[i].t.trans );
+				QuatClear( skel->bones[i].t.rot );
+
+				// move bounding box back
+				VectorSubtract( skel->bounds[0], lerpedOrigin, skel->bounds[0] );
+				VectorSubtract( skel->bounds[1], lerpedOrigin, skel->bounds[1] );
+			} else {
+				VectorCopy( lerpedOrigin, skel->bones[i].t.trans );
+			}
+
+			QuatCopy( lerpedQuat, skel->bones[i].t.rot );
+			skel->bones[i].t.scale = 1.0f;
+
+#if defined( REFBONE_NAMES )
+			Q_strncpyz( skel->bones[i].name, channel->name, sizeof( skel->bones[i].name ) );
+#endif
+		}
+
+		skel->numBones = anim->numChannels;
+		skel->type = refSkeletonType_t::SK_RELATIVE;
+		return true;
+	}
+
+	// FIXME: clear existing bones and bounds?
+	return false;
+}
+
+static int BuildSkeleton( refSkeleton_t* skel, qhandle_t anim, int startFrame, int endFrame, float frac, bool clearOrigin ) {
+	skelAnimation_t skelAnimation = trap_R_GetAnimation( anim );
+	BuildSkeleton( skel, &skelAnimation, startFrame, endFrame, frac, clearOrigin);
+}
+
 int trap_R_BuildSkeleton( refSkeleton_t *skel, qhandle_t anim, int startFrame, int endFrame, float frac, bool clearOrigin )
 {
 	int result;
 	VM::SendMsg<Render::BuildSkeletonMsg>(anim, startFrame, endFrame, frac, clearOrigin, *skel, result);
+	return result;
+}
+
+int trap_R_BuildSkeleton2( refSkeleton_t* skel, skelAnimation_t* anim, int startFrame, int endFrame, float frac, bool clearOrigin ) {
+	int result;
+	result = BuildSkeleton( skel, anim, startFrame, endFrame, frac, clearOrigin );
 	return result;
 }
 
