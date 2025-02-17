@@ -33,6 +33,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <algorithm>
 
+#include "math/Constants.h"
+
 namespace Math {
 
     // This is designed to return min if value is NaN. That's not guaranteed to work when
@@ -64,8 +66,40 @@ namespace Math {
         volatile uint64_t bits = Util::bit_cast<uint64_t>(x);
         return ~bits & 0x7ff0000000000000;
     }
+
+	inline float DegToRad( float angle )
+	{
+		return angle * divpi_180_f;
+	}
+
+	inline float RadToDeg( float angle )
+	{
+		return angle * div180_pi_f;
+	}
+
+	inline double DegToRad( double angle )
+	{
+		return angle * divpi_180_d;
+	}
+
+	inline double RadToDeg( double angle )
+	{
+		return angle * div180_pi_d;
+	}
 }
 
 #include "math/Vector.h"
+
+template<typename A>
+DEPRECATED A DEG2RAD( const A a )
+{
+	return Math::DegToRad( a );
+}
+
+template<typename A>
+DEPRECATED A RAD2DEG( const A a )
+{
+	return Math::RadToDeg ( a );
+}
 
 #endif //COMMON_MATH_H_

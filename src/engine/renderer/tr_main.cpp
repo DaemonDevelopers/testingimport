@@ -985,7 +985,7 @@ static void R_SetupFrustum()
 	}
 	else
 	{
-		ang = DEG2RAD( tr.viewParms.fovX * 0.5f );
+		ang = Math::DegToRad( tr.viewParms.fovX * 0.5f );
 		xs = sinf( ang );
 		xc = cosf( ang );
 
@@ -995,7 +995,7 @@ static void R_SetupFrustum()
 		VectorScale( tr.viewParms.orientation.axis[ 0 ], xs, tr.viewParms.frustums[ 0 ][ 1 ].normal );
 		VectorMA( tr.viewParms.frustums[ 0 ][ 1 ].normal, -xc, tr.viewParms.orientation.axis[ 1 ], tr.viewParms.frustums[ 0 ][ 1 ].normal );
 
-		ang = DEG2RAD( tr.viewParms.fovY * 0.5f );
+		ang = Math::DegToRad( tr.viewParms.fovY * 0.5f );
 		xs = sinf( ang );
 		xc = cosf( ang );
 

@@ -394,7 +394,7 @@ void RotatePointAroundVector( vec3_t dst, const vec3_t dir, const vec3_t point, 
 	float sind, cosd, expr;
 	vec3_t dxp;
 
-	degrees = DEG2RAD( degrees );
+	degrees = Math::DegToRad( degrees );
 	sind = sinf( degrees );
 	cosd = cosf( degrees );
 	expr = ( 1 - cosd ) * DotProduct( dir, point );
@@ -452,7 +452,7 @@ void vectoangles( const vec3_t value1, vec3_t angles )
 	{
 		if ( value1[ 0 ] )
 		{
-			yaw = RAD2DEG( atan2f( value1[ 1 ], value1[ 0 ] ) );
+			yaw = Math::RadToDeg( atan2f( value1[ 1 ], value1[ 0 ] ) );
 		}
 
 		else if ( value1[ 1 ] > 0 )
@@ -471,7 +471,7 @@ void vectoangles( const vec3_t value1, vec3_t angles )
 		}
 
 		forward = sqrtf( value1[ 0 ] * value1[ 0 ] + value1[ 1 ] * value1[ 1 ] );
-		pitch = RAD2DEG( atan2f( value1[ 2 ], forward ) );
+		pitch = Math::RadToDeg( atan2f( value1[ 2 ], forward ) );
 
 		if ( pitch < 0 )
 		{
@@ -705,7 +705,7 @@ float AngleBetweenVectors( const vec3_t a, const vec3_t b )
 	// this results in:
 	//
 	// angle = acos( (a * b) / (|a| * |b|) )
-	return RAD2DEG( acosf( DotProduct( a, b ) / ( alen * blen ) ) );
+	return Math::RadToDeg( acosf( DotProduct( a, b ) / ( alen * blen ) ) );
 }
 
 //============================================================
@@ -1011,15 +1011,15 @@ void AngleVectors( const vec3_t angles, vec3_t forward, vec3_t right, vec3_t up 
 
 	// static to help MS compiler fp bugs
 
-	angle = DEG2RAD( angles[ YAW ] );
+	angle = Math::DegToRad( angles[ YAW ] );
 	sy = sinf( angle );
 	cy = cosf( angle );
 
-	angle = DEG2RAD( angles[ PITCH ] );
+	angle = Math::DegToRad( angles[ PITCH ] );
 	sp = sinf( angle );
 	cp = cosf( angle );
 
-	angle = DEG2RAD( angles[ ROLL ] );
+	angle = Math::DegToRad( angles[ ROLL ] );
 	sr = sinf( angle );
 	cr = cosf( angle );
 
@@ -1355,7 +1355,7 @@ void AxisToAngles( /*const*/ vec3_t axis[ 3 ], vec3_t angles )
 	{
 		if ( axis[ 0 ][ 0 ] )
 		{
-			yaw = RAD2DEG( atan2f( axis[ 0 ][ 1 ], axis[ 0 ][ 0 ] ) );
+			yaw = Math::RadToDeg( atan2f( axis[ 0 ][ 1 ], axis[ 0 ][ 0 ] ) );
 		}
 
 		else if ( axis[ 0 ][ 1 ] > 0 )
@@ -1374,14 +1374,14 @@ void AxisToAngles( /*const*/ vec3_t axis[ 3 ], vec3_t angles )
 		}
 
 		length1 = sqrtf( axis[ 0 ][ 0 ] * axis[ 0 ][ 0 ] + axis[ 0 ][ 1 ] * axis[ 0 ][ 1 ] );
-		pitch = RAD2DEG( atan2f( axis[ 0 ][ 2 ], length1 ) );
+		pitch = Math::RadToDeg( atan2f( axis[ 0 ][ 2 ], length1 ) );
 
 		if ( pitch < 0 )
 		{
 			pitch += 360;
 		}
 
-		roll = RAD2DEG( atan2f( axis[ 1 ][ 2 ], axis[ 2 ][ 2 ] ) );
+		roll = Math::RadToDeg( atan2f( axis[ 1 ][ 2 ], axis[ 2 ][ 2 ] ) );
 
 		if ( roll < 0 )
 		{
@@ -1577,7 +1577,7 @@ bool MatrixInverse( matrix_t matrix )
 }
 void MatrixSetupXRotation( matrix_t m, vec_t degrees )
 {
-	vec_t a = DEG2RAD( degrees );
+	vec_t a = Math::DegToRad( degrees );
 
 	m[ 0 ] = 1;
 	m[ 4 ] = 0;
@@ -1598,7 +1598,7 @@ void MatrixSetupXRotation( matrix_t m, vec_t degrees )
 }
 void MatrixSetupYRotation( matrix_t m, vec_t degrees )
 {
-	vec_t a = DEG2RAD( degrees );
+	vec_t a = Math::DegToRad( degrees );
 
 	m[ 0 ] = cosf( a );
 	m[ 4 ] = 0;
@@ -1619,7 +1619,7 @@ void MatrixSetupYRotation( matrix_t m, vec_t degrees )
 }
 void MatrixSetupZRotation( matrix_t m, vec_t degrees )
 {
-	vec_t a = DEG2RAD( degrees );
+	vec_t a = Math::DegToRad( degrees );
 
 	m[ 0 ] = cosf( a );
 	m[ 4 ] = -sinf( a );
@@ -1774,7 +1774,7 @@ void MatrixMultiplyRotation( matrix_t m, vec_t pitch, vec_t yaw, vec_t roll )
 void MatrixMultiplyZRotation( matrix_t m, vec_t degrees )
 {
 	matrix_t tmp;
-	float angle = DEG2RAD( degrees );
+	float angle = Math::DegToRad( degrees );
 	float s = sinf( angle );
 	float c = cosf( angle );
 
@@ -1857,15 +1857,15 @@ void MatrixToAngles( const matrix_t m, vec3_t angles )
 
 	if ( cp > 8192 * FLT_EPSILON )
 	{
-		angles[ PITCH ] = RAD2DEG( theta );
-		angles[ YAW ] = RAD2DEG( atan2f( m[ 1 ], m[ 0 ] ) );
-		angles[ ROLL ] = RAD2DEG( atan2f( m[ 6 ], m[ 10 ] ) );
+		angles[ PITCH ] = Math::RadToDeg( theta );
+		angles[ YAW ] = Math::RadToDeg( atan2f( m[ 1 ], m[ 0 ] ) );
+		angles[ ROLL ] = Math::RadToDeg( atan2f( m[ 6 ], m[ 10 ] ) );
 	}
 
 	else
 	{
-		angles[ PITCH ] = RAD2DEG( theta );
-		angles[ YAW ] = RAD2DEG( -atan2f( m[ 4 ], m[ 5 ] ) );
+		angles[ PITCH ] = Math::RadToDeg( theta );
+		angles[ YAW ] = Math::RadToDeg( -atan2f( m[ 4 ], m[ 5 ] ) );
 		angles[ ROLL ] = 0;
 	}
 
@@ -1878,16 +1878,16 @@ void MatrixToAngles( const matrix_t m, vec3_t angles )
 
 	if ( fabsf( ca ) > 0.005f )  // Gimbal lock?
 	{
-		angles[ PITCH ] = RAD2DEG( atan2f( m[ 6 ] / ca, m[ 10 ] / ca ) );
-		angles[ YAW ] = RAD2DEG( a );
-		angles[ ROLL ] = RAD2DEG( atan2f( m[ 1 ] / ca, m[ 0 ] / ca ) );
+		angles[ PITCH ] = Math::RadToDeg( atan2f( m[ 6 ] / ca, m[ 10 ] / ca ) );
+		angles[ YAW ] = Math::RadToDeg( a );
+		angles[ ROLL ] = Math::RadToDeg( atan2f( m[ 1 ] / ca, m[ 0 ] / ca ) );
 	}
 
 	else
 	{
 		// Gimbal lock has occurred
-		angles[ PITCH ] = RAD2DEG( atan2f( -m[ 9 ], m[ 5 ] ) );
-		angles[ YAW ] = RAD2DEG( a );
+		angles[ PITCH ] = Math::RadToDeg( atan2f( -m[ 9 ], m[ 5 ] ) );
+		angles[ YAW ] = Math::RadToDeg( a );
 		angles[ ROLL ] = 0;
 	}
 
@@ -1900,14 +1900,14 @@ void MatrixFromAngles( matrix_t m, vec_t pitch, vec_t yaw, vec_t roll )
 	static float sr, sp, sy, cr, cp, cy;
 
 	// static to help MS compiler fp bugs
-	sp = sinf( DEG2RAD( pitch ) );
-	cp = cosf( DEG2RAD( pitch ) );
+	sp = sinf( Math::DegToRad( pitch ) );
+	cp = cosf( Math::DegToRad( pitch ) );
 
-	sy = sinf( DEG2RAD( yaw ) );
-	cy = cosf( DEG2RAD( yaw ) );
+	sy = sinf( Math::DegToRad( yaw ) );
+	cy = cosf( Math::DegToRad( yaw ) );
 
-	sr = sinf( DEG2RAD( roll ) );
-	cr = cosf( DEG2RAD( roll ) );
+	sr = sinf( Math::DegToRad( roll ) );
+	cr = cosf( Math::DegToRad( roll ) );
 
 	m[ 0 ] = cp * cy;
 	m[ 4 ] = ( sr * sp * cy + cr * -sy );
@@ -2467,7 +2467,7 @@ void MatrixPerspectiveProjectionFovYAspectLH( matrix_t m, vec_t fov, vec_t aspec
 {
 	vec_t width, height;
 
-	width = tanf( DEG2RAD( fov * 0.5f ) );
+	width = tanf( Math::DegToRad( fov * 0.5f ) );
 	height = width / aspect;
 
 	m[ 0 ] = 1 / width;
@@ -2491,8 +2491,8 @@ void MatrixPerspectiveProjectionFovXYLH( matrix_t m, vec_t fovX, vec_t fovY, vec
 {
 	vec_t width, height;
 
-	width = tanf( DEG2RAD( fovX * 0.5f ) );
-	height = tanf( DEG2RAD( fovY * 0.5f ) );
+	width = tanf( Math::DegToRad( fovX * 0.5f ) );
+	height = tanf( Math::DegToRad( fovY * 0.5f ) );
 
 	m[ 0 ] = 1 / width;
 	m[ 4 ] = 0;
@@ -2516,8 +2516,8 @@ void MatrixPerspectiveProjectionFovXYRH( matrix_t m, vec_t fovX, vec_t fovY, vec
 {
 	vec_t width, height;
 
-	width = tanf( DEG2RAD( fovX * 0.5f ) );
-	height = tanf( DEG2RAD( fovY * 0.5f ) );
+	width = tanf( Math::DegToRad( fovX * 0.5f ) );
+	height = tanf( Math::DegToRad( fovY * 0.5f ) );
 
 	m[ 0 ] = 1 / width;
 	m[ 4 ] = 0;
@@ -2542,8 +2542,8 @@ void MatrixPerspectiveProjectionFovXYInfiniteRH( matrix_t m, vec_t fovX, vec_t f
 {
 	vec_t width, height;
 
-	width = tanf( DEG2RAD( fovX * 0.5f ) );
-	height = tanf( DEG2RAD( fovY * 0.5f ) );
+	width = tanf( Math::DegToRad( fovX * 0.5f ) );
+	height = tanf( Math::DegToRad( fovY * 0.5f ) );
 
 	m[ 0 ] = 1 / width;
 	m[ 4 ] = 0;
@@ -2839,14 +2839,14 @@ void QuatFromAngles( quat_t q, vec_t pitch, vec_t yaw, vec_t roll )
 	static float sr, sp, sy, cr, cp, cy;
 
 	// static to help MS compiler fp bugs
-	sp = sinf(DEG2RAD(pitch) * 0.5);
-	cp = cosf(DEG2RAD(pitch) * 0.5);
+	sp = sinf(Math::DegToRad(pitch) * 0.5);
+	cp = cosf(Math::DegToRad(pitch) * 0.5);
 
-	sy = sinf(DEG2RAD(yaw) * 0.5);
-	cy = cosf(DEG2RAD(yaw) * 0.5);
+	sy = sinf(Math::DegToRad(yaw) * 0.5);
+	cy = cosf(Math::DegToRad(yaw) * 0.5);
 
-	sr = sinf(DEG2RAD(roll) * 0.5);
-	cr = cosf(DEG2RAD(roll) * 0.5);
+	sr = sinf(Math::DegToRad(roll) * 0.5);
+	cr = cosf(Math::DegToRad(roll) * 0.5);
 
 	q[0] = sr * cp * cy - cr * sp * sy; // x
 	q[1] = cr * sp * cy + sr * cp * sy; // y
@@ -3015,7 +3015,7 @@ void QuatToAngles( const quat_t q, vec3_t angles )
 
 	if ( test > 0.4995 )
 	{
-		angles[YAW] = RAD2DEG(-2 * atan2f(q[0], q[3]));
+		angles[YAW] = Math::RadToDeg(-2 * atan2f(q[0], q[3]));
 		angles[PITCH] = 90;
 		angles[ROLL] = 0;
 		return;
@@ -3023,21 +3023,21 @@ void QuatToAngles( const quat_t q, vec3_t angles )
 
 	if ( test < -0.4995 )
 	{
-		angles[YAW] = RAD2DEG(2 * atan2f(q[0], q[3]));
+		angles[YAW] = Math::RadToDeg(2 * atan2f(q[0], q[3]));
 		angles[PITCH] = -90;
 		angles[ROLL] = 0;
 		return;
 	}
 
 	// original for normalized quaternions:
-	// angles[PITCH] = RAD2DEG(asinf( 2.0f * (q[3] * q[1] - q[2] * q[0])));
-	// angles[YAW]   = RAD2DEG(atan2f(2.0f * (q[3] * q[2] + q[0] * q[1]), 1.0f - 2.0f * (q2[1] + q2[2])));
-	// angles[ROLL]  = RAD2DEG(atan2f(2.0f * (q[3] * q[0] + q[1] * q[2]), 1.0f - 2.0f * (q2[0] + q2[1])));
+	// angles[PITCH] = Math::RadToDeg(asinf( 2.0f * (q[3] * q[1] - q[2] * q[0])));
+	// angles[YAW]   = Math::RadToDeg(atan2f(2.0f * (q[3] * q[2] + q[0] * q[1]), 1.0f - 2.0f * (q2[1] + q2[2])));
+	// angles[ROLL]  = Math::RadToDeg(atan2f(2.0f * (q[3] * q[0] + q[1] * q[2]), 1.0f - 2.0f * (q2[0] + q2[1])));
 
 	// optimized to work with both normalized and unnormalized quaternions:
-	angles[PITCH] = RAD2DEG(asinf(2.0f * test));
-	angles[YAW]   = RAD2DEG(atan2f(2.0f * (q[3] * q[2] + q[0] * q[1]), q2[0] - q2[1] - q2[2] + q2[3]));
-	angles[ROLL]  = RAD2DEG(atan2f(2.0f * (q[3] * q[0] + q[1] * q[2]), -q2[0] - q2[1] + q2[2] + q2[3]));
+	angles[PITCH] = Math::RadToDeg(asinf(2.0f * test));
+	angles[YAW]   = Math::RadToDeg(atan2f(2.0f * (q[3] * q[2] + q[0] * q[1]), q2[0] - q2[1] - q2[2] + q2[3]));
+	angles[ROLL]  = Math::RadToDeg(atan2f(2.0f * (q[3] * q[0] + q[1] * q[2]), -q2[0] - q2[1] + q2[2] + q2[3]));
 }
 
 void QuatMultiply( const quat_t qa, const quat_t qb, quat_t qc )

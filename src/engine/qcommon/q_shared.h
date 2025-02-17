@@ -274,15 +274,15 @@ void  Com_Free_Aligned( void *ptr );
 	using fixed16_t = int;
 
 #ifndef M_PI
-#define M_PI 3.14159265358979323846f // matches value in gcc v2 math.h
+DEPRECATED static const float M_PI = 3.14159265358979323846f // matches value in gcc v2 math.h
 #endif
 
 #ifndef M_SQRT2
-#define M_SQRT2 1.414213562f
+DEPRECATED static const float M_SQRT2 = 1.414213562f;
 #endif
 
 #ifndef M_ROOT3
-#define M_ROOT3 1.732050808f
+DEPRECATED static const float M_ROOT3 = 1.732050808f;
 #endif
 
 #ifndef LINE_DISTANCE_EPSILON
@@ -325,9 +325,6 @@ void  Com_Free_Aligned( void *ptr );
 // keyword currently used to mark a line as having to be appended to the log, but not notify about it on the HUD
 // FIXME/KILLME: not implemented!
 #define S_SKIPNOTIFY "[skipnotify]"
-
-#define DEG2RAD( a )                  ( ( ( a ) * M_PI ) / 180.0f )
-#define RAD2DEG( a )                  ( ( ( a ) * 180.0f ) / M_PI )
 
 struct cplane_t;
 

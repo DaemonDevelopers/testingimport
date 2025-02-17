@@ -1407,7 +1407,7 @@ ScreenshotCmd screenshotPNGRegistration("screenshotPNG", ssFormat_t::SSF_PNG, "p
 		// init function tables
 		for ( i = 0; i < FUNCTABLE_SIZE; i++ )
 		{
-			tr.sinTable[ i ] = sinf( DEG2RAD( i * 360.0f / ( ( float )( FUNCTABLE_SIZE - 1 ) ) ) );
+			tr.sinTable[ i ] = sinf( Math::DegToRad( i * 360.0f / ( ( float )( FUNCTABLE_SIZE - 1 ) ) ) );
 			tr.squareTable[ i ] = ( i < FUNCTABLE_SIZE / 2 ) ? 1.0f : -1.0f;
 			tr.sawToothTable[ i ] = ( float ) i / FUNCTABLE_SIZE;
 			tr.inverseSawToothTable[ i ] = 1.0f - tr.sawToothTable[ i ];

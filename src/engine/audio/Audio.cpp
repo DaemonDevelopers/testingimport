@@ -669,7 +669,7 @@ namespace Audio {
         const float PERCEPTUAL_C = 0.866224835960518f;
         const float PERCEPTUAL_D = 0.187108105667604f;
 
-        return std::pow(10.0f, (perceptual - PERCEPTUAL_D) / 3.0f) - PERCEPTUAL_C;
+        return std::pow(10.0f, (perceptual - PERCEPTUAL_D) * Math::inv_3_f) - PERCEPTUAL_C;
     }
 
     float SliderToAmplitude(float slider) {

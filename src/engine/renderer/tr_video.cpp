@@ -339,10 +339,10 @@ static void blitVQQuad32fs( roqVideo_t &video, const std::vector<byte> &file )
 
 static void ROQ_GenYUVTables()
 {
-	float t_ub = ( 1.77200f / 2.0f ) * ( float )( 1 << 6 ) + 0.5f;
-	float t_vr = ( 1.40200f / 2.0f ) * ( float )( 1 << 6 ) + 0.5f;
-	float t_ug = ( 0.34414f / 2.0f ) * ( float )( 1 << 6 ) + 0.5f;
-	float t_vg = ( 0.71414f / 2.0f ) * ( float )( 1 << 6 ) + 0.5f;
+	float t_ub = ( 1.77200f * 0.5f ) * ( float )( 1 << 6 ) + 0.5f;
+	float t_vr = ( 1.40200f * 0.5f ) * ( float )( 1 << 6 ) + 0.5f;
+	float t_ug = ( 0.34414f * 0.5f ) * ( float )( 1 << 6 ) + 0.5f;
+	float t_vg = ( 0.71414f * 0.5f ) * ( float )( 1 << 6 ) + 0.5f;
 
 	for ( int i = 0; i < 256; i++ )
 	{

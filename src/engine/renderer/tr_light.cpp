@@ -1288,10 +1288,10 @@ byte R_CalcLightCubeSideBits( trRefLight_t *light, vec3_t worldBounds[ 2 ] )
 		zNear = 1.0f;
 		zFar = light->sphereRadius;
 
-		xMax = zNear * tanf( fovX * M_PI / 360.0f );
+		xMax = zNear * tanf( fovX * Math::divpi_360_f );
 		xMin = -xMax;
 
-		yMax = zNear * tanf( fovY * M_PI / 360.0f );
+		yMax = zNear * tanf( fovY * Math::divpi_360_f );
 		yMin = -yMax;
 
 		MatrixPerspectiveProjection( projectionMatrix, xMin, xMax, yMin, yMax, zNear, zFar );

@@ -495,7 +495,7 @@ static void AutospriteDeform( uint32_t numVertexes )
 		VectorCopy( backEnd.viewParms.orientation.axis[ 2 ], upDir );
 	}
 
-	float scale = 1.0 / M_SQRT2;
+	float scale = Math::inv_sqrt2_f;
 
 	if ( backEnd.currentEntity->e.nonNormalizedAxes )
 	{

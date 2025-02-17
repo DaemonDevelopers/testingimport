@@ -113,7 +113,7 @@ void SCR_DrawConsoleFontUnichar( float x, float y, int ch )
 	{
 		glyphInfo_t *glyph = Glyph( ch );
 		float       yadj = glyph->top;
-		float       xadj = ( SCR_ConsoleFontUnicharWidth( ch ) - glyph->xSkip ) / 2.0;
+		float       xadj = ( SCR_ConsoleFontUnicharWidth( ch ) - glyph->xSkip ) * 0.5f;
 
 		re.DrawStretchPic( x + xadj, y - yadj, glyph->imageWidth, glyph->imageHeight,
 		                   glyph->s, glyph->t,

@@ -2223,11 +2223,11 @@ void MaterialSystem::RenderMaterial( Material& material, const uint32_t viewID )
 
 				const float id = ( float ) material.id / ( materialPacks[0].materials.size() + 2 ) + 1;
 
-				color[0] = std::min( id, 1 / 3.0f ) * 3.0 * colors[int( material.id * 6.0
+				color[0] = std::min( id, Math::inv_3_f ) * 3.0f * colors[int( material.id * 6.0f
 					/ materialPacks[0].materials.size() )][0];
-				color[1] = Math::Clamp( id - 1 / 3.0, 0.0, 1 / 3.0 ) * 3.0 * colors[int( material.id * 6.0
+				color[1] = Math::Clamp( id - Math::inv_3_f, 0.0f, Math::inv_3_f ) * 3.0f * colors[int( material.id * 6.0f
 					/ materialPacks[0].materials.size() )][1];
-				color[2] = Math::Clamp( id - 2 / 3.0, 0.0, 1 / 3.0 ) * 3.0 * colors[int( material.id * 6.0
+				color[2] = Math::Clamp( id - Math::div2_3_f, 0.0f, Math::inv_3_f ) * 3.0f * colors[int( material.id * 6.0f
 					/ materialPacks[0].materials.size() )][2];
 
 				break;
@@ -2241,11 +2241,11 @@ void MaterialSystem::RenderMaterial( Material& material, const uint32_t viewID )
 				const float id = ( float ) ( material.id + 1 )
 					/ ( materialPacks[1].materials.size() + materialPacks[2].materials.size() + 2 );
 
-				color[0] = std::min( id, 1 / 3.0f ) * 3.0 * colors[int( material.id * 6.0
+				color[0] = std::min( id, Math::inv_3_f ) * 3.0f * colors[int( material.id * 6.0f
 					/ ( materialPacks[1].materials.size() + materialPacks[2].materials.size() ) )][0];
-				color[1] = Math::Clamp( id - 1 / 3.0, 0.0, 1 / 3.0 ) * 3.0 * colors[int( material.id * 6.0
+				color[1] = Math::Clamp( id - Math::inv_3_f, 0.0f, Math::inv_3_f ) * 3.0f * colors[int( material.id * 6.0f
 					/ ( materialPacks[1].materials.size() + materialPacks[2].materials.size() ) )][1];
-				color[2] = Math::Clamp( id - 2 / 3.0, 0.0, 1 / 3.0 ) * 3.0 * colors[int( material.id * 6.0
+				color[2] = Math::Clamp( id - Math::div2_3_f, 0.0f, Math::inv_3_f ) * 3.0f * colors[int( material.id * 6.0f
 					/ ( materialPacks[1].materials.size() + materialPacks[2].materials.size() ) )][2];
 
 				break;
@@ -2259,11 +2259,11 @@ void MaterialSystem::RenderMaterial( Material& material, const uint32_t viewID )
 				const float id = ( float ) ( material.id + 1 )
 					/ ( materialPacks[1].materials.size() + materialPacks[2].materials.size() + 2 ) + 1;
 
-				color[0] = std::min( id, 1 / 3.0f ) * 3.0 * colors[int( material.id * 6.0
+				color[0] = std::min( id, Math::inv_3_f ) * 3.0f * colors[int( material.id * 6.0f
 					/ ( materialPacks[1].materials.size() + materialPacks[2].materials.size() ) )][0];
-				color[1] = Math::Clamp( id - 1 / 3.0, 0.0, 1 / 3.0 ) * 3.0 * colors[int( material.id * 6.0
+				color[1] = Math::Clamp( id - Math::inv_3_f, 0.0f, Math::inv_3_f ) * 3.0f * colors[int( material.id * 6.0f
 					/ ( materialPacks[1].materials.size() + materialPacks[2].materials.size() ) )][1];
-				color[2] = Math::Clamp( id - 2 / 3.0, 0.0, 1 / 3.0 ) * 3.0 * colors[int( material.id * 6.0
+				color[2] = Math::Clamp( id - Math::div2_3_f, 0.0f, Math::inv_3_f ) * 3.0f * colors[int( material.id * 6.0f
 					/ ( materialPacks[1].materials.size() + materialPacks[2].materials.size() ) )][2];
 
 				break;

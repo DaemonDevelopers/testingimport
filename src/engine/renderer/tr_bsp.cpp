@@ -4168,8 +4168,8 @@ void R_LoadLightGrid( lump_t *l )
 		// Lat = 0 at (1,0,0) to 360 (-1,0,0), encoded in 8-bit sine table format
 		// Lng = 0 at (0,0,1) to 180 (0,0,-1), encoded in 8-bit sine table format
 
-		lat = DEG2RAD( in->latLong[ 1 ] * ( 360.0f / 255.0f ) );
-		lng = DEG2RAD( in->latLong[ 0 ] * ( 360.0f / 255.0f ) );
+		lat = Math::DegToRad( in->latLong[ 1 ] * ( 360.0f / 255.0f ) );
+		lng = Math::DegToRad( in->latLong[ 0 ] * ( 360.0f / 255.0f ) );
 
 		direction[ 0 ] = cosf( lat ) * sinf( lng );
 		direction[ 1 ] = sinf( lat ) * sinf( lng );

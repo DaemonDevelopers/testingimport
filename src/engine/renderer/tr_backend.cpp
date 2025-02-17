@@ -2857,8 +2857,8 @@ void RB_RenderPostDepthLightTile()
 	GL_Scissor( 0, 0, w, h );
 	gl_depthtile1Shader->BindProgram( 0 );
 
-	zParams[ 0 ] = 2.0f * tanf( DEG2RAD( backEnd.refdef.fov_x * 0.5f) ) / glConfig.vidWidth;
-	zParams[ 1 ] = 2.0f * tanf( DEG2RAD( backEnd.refdef.fov_y * 0.5f) ) / glConfig.vidHeight;
+	zParams[ 0 ] = 2.0f * tanf( Math::DegToRad( backEnd.refdef.fov_x * 0.5f) ) / glConfig.vidWidth;
+	zParams[ 1 ] = 2.0f * tanf( Math::DegToRad( backEnd.refdef.fov_y * 0.5f) ) / glConfig.vidHeight;
 	zParams[ 2 ] = backEnd.viewParms.zFar;
 
 	gl_depthtile1Shader->SetUniform_zFar( zParams );
@@ -2898,8 +2898,8 @@ void RB_RenderPostDepthLightTile()
 	GL_PopMatrix();
 
 	vec3_t projToViewParams;
-	projToViewParams[0] = tanf(DEG2RAD(backEnd.refdef.fov_x * 0.5f)) * backEnd.viewParms.zFar;
-	projToViewParams[1] = tanf(DEG2RAD(backEnd.refdef.fov_y * 0.5f)) * backEnd.viewParms.zFar;
+	projToViewParams[0] = tanf(Math::DegToRad(backEnd.refdef.fov_x * 0.5f)) * backEnd.viewParms.zFar;
+	projToViewParams[1] = tanf(Math::DegToRad(backEnd.refdef.fov_y * 0.5f)) * backEnd.viewParms.zFar;
 	projToViewParams[2] = backEnd.viewParms.zFar;
 
 	// render lights
@@ -3221,8 +3221,8 @@ void RB_RenderSSAO()
 	gl_ssaoShader->BindProgram( 0 );
 
 	vec3_t zParams;
-	zParams[ 0 ] = 2.0f * tanf( DEG2RAD( backEnd.refdef.fov_x * 0.5f ) ) / glConfig.vidWidth;
-	zParams[ 1 ] = 2.0f * tanf( DEG2RAD( backEnd.refdef.fov_y * 0.5f ) ) / glConfig.vidHeight;
+	zParams[ 0 ] = 2.0f * tanf( Math::DegToRad( backEnd.refdef.fov_x * 0.5f ) ) / glConfig.vidWidth;
+	zParams[ 1 ] = 2.0f * tanf( Math::DegToRad( backEnd.refdef.fov_y * 0.5f ) ) / glConfig.vidHeight;
 	zParams[ 2 ] = backEnd.viewParms.zFar;
 
 	gl_ssaoShader->SetUniform_zFar( zParams );
@@ -5179,8 +5179,8 @@ const RenderCommand *RotatedPicCommand::ExecuteSelf( ) const
 
 	mx = x + ( w / 2 );
 	my = y + ( h / 2 );
-	cosA = cosf( DEG2RAD( angle ) );
-	sinA = sinf( DEG2RAD( angle ) );
+	cosA = cosf( Math::DegToRad( angle ) );
+	sinA = sinf( Math::DegToRad( angle ) );
 	cw = cosA * ( w / 2 );
 	ch = cosA * ( h / 2 );
 	sw = sinA * ( w / 2 );

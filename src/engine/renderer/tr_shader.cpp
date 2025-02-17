@@ -4120,7 +4120,7 @@ static bool ParseShader( const char *_text )
 				continue;
 			}
 
-			a = DEG2RAD( atof( token ) );
+			a = Math::DegToRad( atof( token ) );
 
 			token = COM_ParseExt2( text, false );
 
@@ -4130,7 +4130,7 @@ static bool ParseShader( const char *_text )
 				continue;
 			}
 
-			b = DEG2RAD( atof( token ) );
+			b = Math::DegToRad( atof( token ) );
 
 			tr.sunDirection[ 0 ] = cosf( a ) * cosf( b );
 			tr.sunDirection[ 1 ] = sinf( a ) * cosf( b );

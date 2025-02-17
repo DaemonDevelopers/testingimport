@@ -627,7 +627,7 @@ static std::string GenEngineConstants() {
 	AddDefine( str, "r_SpecularScale", r_specularScale->value );
 	AddDefine( str, "r_zNear", r_znear->value );
 
-	AddDefine( str, "M_PI", static_cast< float >( M_PI ) );
+	AddDefine( str, "M_PI", Math::pi_f );
 	AddDefine( str, "MAX_SHADOWMAPS", MAX_SHADOWMAPS );
 	AddDefine( str, "MAX_REF_LIGHTS", MAX_REF_LIGHTS );
 	AddDefine( str, "NUM_LIGHT_LAYERS", glConfig2.realtimeLightLayers );

@@ -45,7 +45,7 @@ DECLARE_OUTPUT(vec4)
 
 // Parametric cloud function used by quake 3 skybox code
 float ComputeCloudParametric( vec3 skyVec, float radiusWorld, float cloudHeight ) {
-	return (1.0 / 2.0 * dot( skyVec, skyVec ) ) * ( -2.0 * skyVec.z * radiusWorld
+	return (0.5 * dot( skyVec, skyVec ) ) * ( -2.0 * skyVec.z * radiusWorld
 			+ 2.0 * sqrt( skyVec.z * skyVec.z * radiusWorld * radiusWorld
 			+ 2.0 * skyVec.x * skyVec.x * radiusWorld * cloudHeight
 			+ skyVec.x * skyVec.x * cloudHeight * cloudHeight + 2.0 * skyVec.y * skyVec.y * radiusWorld * cloudHeight

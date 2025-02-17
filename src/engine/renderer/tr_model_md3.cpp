@@ -218,8 +218,8 @@ bool R_LoadMD3( model_t *mod, int lod, const void *buffer, const char *modName )
 			v->xyz[ 1 ] = LittleShort( md3xyz->xyz[ 1 ] ) * MD3_XYZ_SCALE;
 			v->xyz[ 2 ] = LittleShort( md3xyz->xyz[ 2 ] ) * MD3_XYZ_SCALE;
 
-			lat = (latLng >> 8) * (2.0f * M_PI / 255.0f);
-			lng = (latLng & 255) * (2.0f * M_PI / 255.0f);
+			lat = (latLng >> 8) * (Math::mul2_pi_f / 255.0f);
+			lng = (latLng & 255) * (Math::mul2_pi_f / 255.0f);
 			n->normal[ 0 ] = cosf ( lat ) * sinf ( lng );
 			n->normal[ 1 ] = sinf ( lat ) * sinf ( lng );
 			n->normal[ 2 ] = cosf ( lng );
