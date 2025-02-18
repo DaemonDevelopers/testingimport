@@ -325,6 +325,8 @@ void Hunk_FreeTempMemory( void *buf )
 
 	if ( hdr->magic != (int) HUNK_MAGIC )
 	{
+		if ( Sys::IsDebuggerAttached() ) BREAKPOINT();
+
 		Sys::Error( "Hunk_FreeTempMemory: bad magic" );
 	}
 
