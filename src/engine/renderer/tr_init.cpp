@@ -93,7 +93,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 	cvar_t      *r_precomputedLighting;
 	Cvar::Cvar<int> r_overbrightDefaultExponent("r_overbrightDefaultExponent", "default map light color shift (multiply by 2^x)", Cvar::NONE, 2);
 	Cvar::Range<Cvar::Cvar<int>> r_overbrightBits("r_overbrightBits", "clamp lightmap colors to 2^x", Cvar::NONE, 1, 0, 3);
+
+	// also set r_highPrecisionRendering 0 for an even more authentic q3 experience
 	Cvar::Cvar<bool> r_overbrightQ3("r_overbrightQ3", "brighten entire color buffer like Quake 3 (incompatible with newer assets)", Cvar::NONE, false);
+
 	Cvar::Cvar<bool> r_overbrightIgnoreMapSettings("r_overbrightIgnoreMapSettings", "force usage of r_overbrightDefaultClamp / r_overbrightDefaultExponent, ignoring worldspawn", Cvar::NONE, false);
 	Cvar::Range<Cvar::Cvar<int>> r_lightMode("r_lightMode", "lighting mode: 0: fullbright (cheat), 1: vertex light, 2: grid light (cheat), 3: light map", Cvar::NONE, Util::ordinal(lightMode_t::MAP), Util::ordinal(lightMode_t::FULLBRIGHT), Util::ordinal(lightMode_t::MAP));
 	Cvar::Cvar<bool> r_colorGrading( "r_colorGrading", "Use color grading", Cvar::NONE, true );
