@@ -725,19 +725,11 @@ static std::string GenEngineConstants() {
 			AddDefine( str, "r_showParallelShadowSplits", 1 );
 	}
 
-	if ( r_highPrecisionRendering.Get() )
-	{
-		AddDefine( str, "r_highPrecisionRendering", 1 );
-	}
-
 	if ( glConfig2.realtimeLighting )
 	{
 		AddDefine( str, "r_realtimeLighting", 1 );
 		AddDefine( str, "r_realtimeLightingRenderer", r_realtimeLightingRenderer.Get() );
 	}
-
-	if ( r_precomputedLighting->integer )
-		AddDefine( str, "r_precomputedLighting", 1 );
 
 	if ( r_showNormalMaps->integer )
 	{
@@ -836,8 +828,6 @@ static std::string GenEngineConstants() {
 	{
 		AddDefine( str, "r_colorGrading", 1 );
 	}
-
-	AddDefine( str, "r_zNear", r_znear->value );
 
 	return str;
 }

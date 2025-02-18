@@ -3062,19 +3062,12 @@ void RB_RenderBloom()
 		GL_State( GLS_DEPTHTEST_DISABLE );
 		GL_Cull( cullType_t::CT_TWO_SIDED );
 
-		GL_PushMatrix();
-
-		MatrixOrthogonalProjection( ortho, 0, tr.contrastRenderFBO->width, 0, tr.contrastRenderFBO->height, -99999, 99999 );
-		GL_LoadProjectionMatrix( ortho );
-
 		// render contrast downscaled to 1/4th of the screen
 		gl_contrastShader->BindProgram( 0 );
 
 		gl_contrastShader->SetUniform_ColorMapBindless(
 			GL_BindToTMU( 0, tr.currentRenderImage[backEnd.currentMainFBO] )
 		);
-
-		GL_PopMatrix(); // special 1/4th of the screen contrastRenderFBO ortho
 
 		R_BindFBO( tr.contrastRenderFBO );
 		GL_ClearColor( 0.0f, 0.0f, 0.0f, 1.0f );

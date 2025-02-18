@@ -5398,8 +5398,6 @@ static void SetStagesRenderers()
 		switch ( stage->type )
 		{
 			case stageType_t::ST_COLORMAP:
-				/* Comment from the Material code:
-				generic2D also uses this, but it's for UI only, so skip that for now. */
 				stageRendererOptions = {
 					&Render_generic,
 					&UpdateSurfaceDataGeneric3D, &BindShaderGeneric3D, &ProcessMaterialGeneric3D,
