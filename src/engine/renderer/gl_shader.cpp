@@ -2896,6 +2896,9 @@ GLShader_cameraEffects::GLShader_cameraEffects( GLShaderManager *manager ) :
 	u_ColorModulate( this ),
 	u_TextureMatrix( this ),
 	u_ModelViewProjectionMatrix( this ),
+	u_Tonemap( this ),
+	u_TonemapParms( this ),
+	u_TonemapExposure( this ),
 	u_InverseGamma( this )
 {
 }

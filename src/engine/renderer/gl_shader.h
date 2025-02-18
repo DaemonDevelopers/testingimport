@@ -3795,6 +3795,42 @@ public:
 	}
 };
 
+class u_Tonemap :
+	GLUniform1Bool {
+	public:
+	u_Tonemap( GLShader* shader ) :
+		GLUniform1Bool( shader, "u_Tonemap", true ) {
+	}
+
+	void SetUniform_Tonemap( bool tonemap ) {
+		this->SetValue( tonemap );
+	}
+};
+
+class u_TonemapParms :
+	GLUniform4f {
+	public:
+	u_TonemapParms( GLShader* shader ) :
+		GLUniform4f( shader, "u_TonemapParms", true ) {
+	}
+
+	void SetUniform_TonemapParms( vec4_t tonemapParms ) {
+		this->SetValue( tonemapParms );
+	}
+};
+
+class u_TonemapExposure :
+	GLUniform1f {
+	public:
+	u_TonemapExposure( GLShader* shader ) :
+		GLUniform1f( shader, "u_TonemapExposure", true ) {
+	}
+
+	void SetUniform_TonemapExposure( float tonemapExposure ) {
+		this->SetValue( tonemapExposure );
+	}
+};
+
 class u_LightGridOrigin :
 	GLUniform3f
 {
@@ -4427,6 +4463,9 @@ class GLShader_cameraEffects :
 	public u_ColorModulate,
 	public u_TextureMatrix,
 	public u_ModelViewProjectionMatrix,
+	public u_Tonemap,
+	public u_TonemapParms,
+	public u_TonemapExposure,
 	public u_InverseGamma
 {
 public:

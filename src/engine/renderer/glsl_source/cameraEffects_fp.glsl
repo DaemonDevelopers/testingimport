@@ -35,14 +35,32 @@ IN(smooth) vec2		var_TexCoords;
 
 DECLARE_OUTPUT(vec4)
 
-void	main()
+/* x: contrast
+y: highlightsCompressionSpeed
+z: shoulderClip
+w: highlightsCompression */
+uniform bool u_Tonemap;
+uniform vec4 u_TonemapParms;
+uniform float u_TonemapExposure;
+
+vec3 TonemapLottes( vec3 color ) {
+  // Lottes 2016, "Advanced Techniques and Optimization of HDR Color Pipelines"
+  return pow( color, vec3( u_TonemapParms[0] ) )
+         / ( pow( color, vec3( u_TonemapParms[0] * u_TonemapParms[1] ) ) * u_TonemapParms[2] + u_TonemapParms[3] );
+}
+
+void main()
 {
 	// calculate the screen texcoord in the 0.0 to 1.0 range
 	vec2 st = gl_FragCoord.st / r_FBufSize;
 
 	vec4 color = texture2D(u_CurrentMap, st);
 
-	color = clamp(color, 0.0, 1.0);
+	if( u_Tonemap ) {
+		color.rgb = TonemapLottes( color.rgb * u_TonemapExposure );
+	} else {
+		color.rgb = clamp( color.rgb, vec3( 0.0f ), vec3( 1.0f ) );
+	}
 
 #if defined(r_colorGrading)
 	// apply color grading
