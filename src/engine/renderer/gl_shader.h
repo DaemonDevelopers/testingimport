@@ -3537,6 +3537,21 @@ public:
 	}
 };
 
+class u_GlobalLightFactor :
+	GLUniform1f
+{
+public:
+	u_GlobalLightFactor( GLShader *shader ) :
+		GLUniform1f( shader, "u_GlobalLightFactor" )
+	{
+	}
+
+	void SetUniform_GlobalLightFactor( float value )
+	{
+		this->SetValue( value );
+	}
+};
+
 class GLDeformStage :
 	public u_Time
 {
@@ -4424,6 +4439,7 @@ class GLShader_cameraEffects :
 	public GLShader,
 	public u_ColorMap3D,
 	public u_CurrentMap,
+	public u_GlobalLightFactor,
 	public u_ColorModulate,
 	public u_TextureMatrix,
 	public u_ModelViewProjectionMatrix,
