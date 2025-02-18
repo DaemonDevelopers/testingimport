@@ -160,6 +160,7 @@ set(GLSLSOURCELIST
     ${ENGINE_DIR}/renderer/glsl_source/blur_vp.glsl
     ${ENGINE_DIR}/renderer/glsl_source/cameraEffects_fp.glsl
     ${ENGINE_DIR}/renderer/glsl_source/cameraEffects_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/colorSpace.glsl
     ${ENGINE_DIR}/renderer/glsl_source/computeLight_fp.glsl
     ${ENGINE_DIR}/renderer/glsl_source/contrast_fp.glsl
     ${ENGINE_DIR}/renderer/glsl_source/contrast_vp.glsl

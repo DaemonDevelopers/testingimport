@@ -3054,68 +3054,6 @@ void R_InitImages()
 	tr.lightmaps.reserve( 128 );
 	tr.deluxemaps.reserve( 128 );
 
-	/* These are the values expected by the rest of the renderer
-	(esp. tr_bsp), used for "gamma correction of the map".
-	Both were set to 0 if we had neither COMPAT_ET nor COMPAT_Q3,
-	it may be interesting to remember.
-
-	Quake 3 and Tremulous values:
-
-	  tr.overbrightBits = 0; // Software implementation.
-	  tr.mapOverBrightBits = 2; // Quake 3 default.
-	  tr.identityLight = 1.0f / ( 1 << tr.overbrightBits );
-
-	Games like Quake 3 and Tremulous require tr.mapOverBrightBits
-	to be set to 2. Because this engine is primarily maintained for
-	Unvanquished and needs to keep compatibility with legacy Tremulous
-	maps, this value is set to 2.
-
-	Games like True Combat: Elite (Wolf:ET mod) or Urban Terror 4
-	(Quake 3 mod) require tr.mapOverBrightBits to be set to 0.
-
-	For some reasons the Wolf:ET engine sets this to 0 by default
-	but the game sets it to 2 (and requires it to be 2 for maps
-	looking as expected).
-
-	The mapOverBrightBits value will be read as map entity key
-	by R_LoadEntities() in tr_bsp, making possible to override
-	the default value and properly render a map with another
-	value than the default one.
-
-	If this key is missing in map entity lump, there is no way
-	to know the required value for mapOverBrightBits when loading
-	a BSP, one may rely on arena files to do some guessing when
-	loading foreign maps and games ported to the Dæmon engine may
-	require to set a different default than what Unvanquished
-	requires.
-
-	Using a non-zero value for tr.mapOverBrightBits turns light
-	non-linear and makes deluxe mapping buggy though.
-
-	Mappers may port and fix maps by multiplying the lights by 2.5
-	and set the mapOverBrightBits key to 0 in map entities lump.
-
-	It will be possible to assume tr.mapOverBrightBits is 0 when
-	loading maps compiled with sRGB lightmaps as there is no
-	legacy map using sRGB lightmap yet, and then we will be
-	able to avoid the need to explicitly set mapOverBrightBits
-	to 0 in map entities. It will be required to assume that
-	tr.mapOverBrightBits is 0 when loading maps compiled with
-	sRGB lightmaps because otherwise the color shift computation
-	will break the light computation, not only the deluxe one.
-
-	In legacy engines, tr.overbrightBits was non-zero when
-	hardware overbright bits were enabled, zero when disabled.
-	This engine do not implement hardware overbright bit, so
-	this is always zero, and we can remove it and simplify all
-	the computations making use of it.
-
-	Because tr.overbrightBits is always 0, tr.identityLight is
-	always 1.0f. We can entirely remove it. */
-
-	tr.mapOverBrightBits = r_overbrightDefaultExponent.Get();
-	tr.legacyOverBrightClamping = r_overbrightDefaultClamp.Get();
-
 	// create default texture and white texture
 	R_CreateBuiltinImages();
 }

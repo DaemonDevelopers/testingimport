@@ -2980,6 +2980,9 @@ void RB_RenderGlobalFog()
 	// go back to the world modelview matrix
 	backEnd.orientation = backEnd.viewParms.world;
 
+	// u_LinearizeTexture
+	gl_fogGlobalShader->SetUniform_LinearizeTexture( tr.worldLinearizeTexture );
+
 	{
 		fog_t *fog;
 
@@ -3045,7 +3048,9 @@ void RB_RenderBloom()
 	GLimp_LogComment( "--- RB_RenderBloom ---\n" );
 
 	if ( ( backEnd.refdef.rdflags & ( RDF_NOWORLDMODEL | RDF_NOBLOOM ) )
-		|| !glConfig2.bloom || backEnd.viewParms.portalLevel > 0 ) {
+		|| !glConfig2.bloom || backEnd.viewParms.portalLevel > 0
+		|| !tr.worldLinearizeTexture )
+	{
 		return;
 	}
 
@@ -3327,6 +3332,9 @@ void RB_CameraPostFX()
 
 	// enable shader, set arrays
 	gl_cameraEffectsShader->BindProgram( 0 );
+
+	// u_DelinearizeScreen
+	gl_cameraEffectsShader->SetUniform_DelinearizeScreen( tr.worldLinearizeTexture );
 
 	gl_cameraEffectsShader->SetUniform_ColorModulate( backEnd.viewParms.gradingWeights );
 

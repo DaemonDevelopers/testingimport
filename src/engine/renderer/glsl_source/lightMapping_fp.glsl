@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 /* lightMapping_fp.glsl */
 
 #insert common
+#insert colorSpace
 #insert computeLight_fp
 #insert reliefMapping_fp
 
@@ -101,13 +102,21 @@ void main()
 	vec4 diffuse = texture2D(u_DiffuseMap, texCoords);
 
 	// Apply vertex blend operation like: alphaGen vertex.
-	diffuse *= var_Color;
+	diffuse.a *= var_Color.a;
 
 	if(abs(diffuse.a + u_AlphaThreshold) <= 1.0)
 	{
 		discard;
 		return;
 	}
+
+	bool linearizeColorMap = ( u_LinearizeTexture & 0x1 ) != 0;
+	bool linearizeLightMap = ( u_LinearizeTexture & 0x2 ) != 0;
+	bool linearizeMaterialMap = ( u_LinearizeTexture & 0x4 ) != 0;
+
+	convertFromSRGB(diffuse.rgb, linearizeColorMap);
+
+	diffuse.rgb *= var_Color.rgb;
 
 	// Compute normal in world space from normalmap.
 	#if defined(r_normalMapping)
@@ -119,6 +128,8 @@ void main()
 	#if defined(r_specularMapping) || defined(r_physicalMapping)
 		// Compute the material term.
 		vec4 material = texture2D(u_MaterialMap, texCoords);
+
+		convertFromSRGB(material.rgb, linearizeMaterialMap);
 	#elif ( defined(r_realtimeLighting) && r_realtimeLightingRenderer == 1 )\
 		|| defined( USE_DELUXE_MAPPING ) || defined(USE_GRID_DELUXE_MAPPING )
 		// The computeDynamicLights function requires this variable to exist.
@@ -147,17 +158,13 @@ void main()
 	float lightFactor = ColorModulateToLightFactor( u_ColorModulateColorGen );
 	#if defined(USE_LIGHT_MAPPING)
 		// Compute light color from world space lightmap.
-		// When doing vertex lighting with full-range overbright, this reads out
-		// 1<<overbrightBits and serves for the overbright shift for vertex colors.
 		vec3 lightColor = texture2D(u_LightMap, var_TexLight).rgb;
-		lightColor *= lightFactor;
-
+		TransformLightMap(lightColor, lightFactor, linearizeLightMap);
 		color.rgb = vec3(0.0);
 	#else
 		// Compute light color from lightgrid.
 		vec3 ambientColor, lightColor;
-		ReadLightGrid(texture3D(u_LightGrid1, lightGridPos), lightFactor, ambientColor, lightColor);
-
+		ReadLightGrid(texture3D(u_LightGrid1, lightGridPos), lightFactor, linearizeLightMap, ambientColor, lightColor);
 		color.rgb = ambientColor * r_AmbientScale * diffuse.rgb;
 	#endif
 
@@ -206,14 +213,28 @@ void main()
 
 	// Add Rim Lighting to highlight the edges on model entities.
 	#if defined(r_rimLighting) && defined(USE_MODEL_SURFACE) && defined(USE_GRID_LIGHTING)
+		float mul1, mul2;
+		if ( linearizeLightMap )
+		{
+			mul1 = 0.033; // convertFromSRGB( 0.2 )
+			mul2 = 0.448; // convertFromSRGB( 0.7 )
+		}
+		else
+		{
+			mul1 = 0.2;
+			mul2 = 0.7;
+		}
+
 		float rim = pow(1.0 - clamp(dot(normal, viewDir), 0.0, 1.0), r_RimExponent);
-		vec3 emission = ambientColor * rim * rim * 0.2;
-		color.rgb += 0.7 * emission;
+		vec3 emission = ambientColor * rim * rim * mul1;
+		color.rgb += mul2 * emission;
 	#endif
 
 	#if defined(r_glowMapping)
 		// Blend glow map.
 		vec3 glow = texture2D(u_GlowMap, texCoords).rgb;
+
+		convertFromSRGB(glow, linearizeColorMap);
 
 		color.rgb += glow;
 	#endif

@@ -49,12 +49,27 @@ vec4 EnvironmentalSpecularFactor( vec3 viewDir, vec3 normal )
 
 // lighting helper functions
 
+#if defined(USE_LIGHT_MAPPING)
+	void TransformLightMap( inout vec3 lightColor, in float lightFactor, bool linearizeLightMap )
+	{
+		convertFromSRGB(lightColor, linearizeLightMap);
+
+		// When doing vertex lighting with full-range overbright, this reads out
+		// 1<<overbrightBits and serves for the overbright shift for vertex colors.
+		lightColor *= lightFactor;
+	}
+#endif
+
 #if defined(USE_GRID_LIGHTING) || defined(USE_GRID_DELUXE_MAPPING)
-	void ReadLightGrid( in vec4 texel, in float lightFactor, out vec3 ambientColor, out vec3 lightColor ) {
+	void ReadLightGrid( in vec4 texel, in float lightFactor, in bool linearizeLightMap, out vec3 ambientColor, out vec3 lightColor) {
 		float ambientScale = 2.0 * texel.a;
 		float directedScale = 2.0 - ambientScale;
 		ambientColor = ambientScale * texel.rgb;
 		lightColor = directedScale * texel.rgb;
+
+		/* The light grid conversion from sRGB is done in C++ code
+		when loading it, so it's done before interpolation. */
+
 		ambientColor *= lightFactor;
 		lightColor *= lightFactor;
 	}

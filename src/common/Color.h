@@ -38,6 +38,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Compiler.h"
 #include "Math.h"
 
+#define convertFromSRGB( v ) (v <= 0.04045f ? v * (1.0f / 12.92f) : pow((v + 0.055f) * (1.0f / 1.055f), 2.4f))
+
 namespace Color {
 
 /*
@@ -254,6 +256,20 @@ public:
 	CONSTEXPR_FUNCTION_RELAXED void SetAlpha( component_type v ) NOEXCEPT
 	{
 		data_[ 3 ] = v;
+	}
+
+	CONSTEXPR_FUNCTION_RELAXED component_type ConvertFromSRGB( component_type v ) NOEXCEPT
+	{
+		float f = float( v ) / 255.0f;
+		f = convertFromSRGB( f );
+		return component_type( f * 255 );
+	}
+
+	CONSTEXPR_FUNCTION_RELAXED void ConvertFromSRGB() NOEXCEPT
+	{
+		SetRed( ConvertFromSRGB( Red() ) );
+		SetGreen( ConvertFromSRGB( Green() ) );
+		SetBlue( ConvertFromSRGB( Blue() ) );
 	}
 
 	CONSTEXPR_FUNCTION_RELAXED BasicColor& operator*=( float factor ) NOEXCEPT
