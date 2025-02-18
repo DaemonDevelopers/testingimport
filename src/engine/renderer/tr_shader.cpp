@@ -1224,6 +1224,7 @@ static bool ParseTexMod( const char **text, shaderStage_t *stage )
 		}
 
 		tmi->scroll[ 1 ] = atof( token );
+
 		tmi->type = texMod_t::TMOD_SCROLL;
 	}
 	// stretch
