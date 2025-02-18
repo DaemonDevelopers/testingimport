@@ -896,7 +896,25 @@ static void Init(int argc, char** argv)
 
 	// Initialize the filesystem. For pakpaths, the libpath is added first and has the
 	// lowest priority, while the homepath is added last and has the highest.
-	cmdlineArgs.pakPaths.insert(cmdlineArgs.pakPaths.begin(), FS::Path::Build(cmdlineArgs.libPath, "pkg"));
+
+	/* The default pakpath is <libpath>/pkg, but we load <libpath>/../pkg instead
+	if <libpath>/pkg doesn't exist but <libpath>/../pkg exists.
+	This is to make sure extracting the engine archive in a subfolder works.
+	Many file browsers create a parent directory when there is no directory in an archive. */
+	std::string defaultPakPath = FS::Path::Build(cmdlineArgs.libPath, "pkg");
+
+	std::error_code missing;
+	FS::RawPath::ListFiles(defaultPakPath, missing);
+	if (missing) {
+		std::string parentPakPath = FS::Path::Build(cmdlineArgs.libPath, FS::Path::Build("..", "pkg"));
+		FS::RawPath::ListFiles(parentPakPath, missing);
+		if (!missing) {
+			defaultPakPath = parentPakPath;
+		}
+	}
+
+	cmdlineArgs.pakPaths.insert(cmdlineArgs.pakPaths.begin(), defaultPakPath);
+
 	cmdlineArgs.pakPaths.push_back(FS::Path::Build(cmdlineArgs.homePath, "pkg"));
 	EarlyCvar("fs_legacypaks", cmdlineArgs);
 	FS::Initialize(cmdlineArgs.homePath, cmdlineArgs.libPath, cmdlineArgs.pakPaths);
