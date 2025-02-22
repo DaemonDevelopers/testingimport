@@ -3120,10 +3120,6 @@ void R_InitImages()
 	For even more information, see https://github.com/DaemonEngine/Daemon/issues/1542.
 	*/
 
-	// TODO is there any reason to set these before a map is loaded?
-	tr.mapOverBrightBits = r_overbrightDefaultExponent.Get();
-	tr.overbrightBits = std::min(tr.mapOverBrightBits, r_overbrightBits.Get());
-
 	// create default texture and white texture
 	R_CreateBuiltinImages();
 }

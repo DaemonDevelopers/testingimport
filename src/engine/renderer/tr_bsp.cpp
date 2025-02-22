@@ -5027,11 +5027,15 @@ void RE_LoadWorldMap( const char *name )
 	// try will not look at the partially loaded version
 	tr.world = nullptr;
 
-	// tr.worldDeluxeMapping will be set by R_LoadLightmaps()
-	tr.worldLightMapping = false;
-	// tr.worldDeluxeMapping will be set by R_LoadEntities()
-	tr.worldDeluxeMapping = false;
-	tr.worldHDR_RGBE = false;
+	// It's probably a mistake if any of these lighting parameters are actually
+	// used before a map is loaded.
+	tr.worldLightMapping = false; // set by R_LoadLightmaps
+	tr.worldDeluxeMapping = false; // set by R_LoadEntities
+	tr.worldHDR_RGBE = false; // set by R_LoadEntities
+	tr.mapOverBrightBits = r_overbrightDefaultExponent.Get(); // maybe set by R_LoadEntities
+	tr.overbrightBits = std::min( tr.mapOverBrightBits, r_overbrightBits.Get() ); // set by RE_LoadWorldMap
+	tr.mapLightFactor = 1.0f; // set by RE_LoadWorldMap
+	tr.identityLight = 1.0f; // set by RE_LoadWorldMap
 
 	s_worldData = {};
 	Q_strncpyz( s_worldData.name, name, sizeof( s_worldData.name ) );
@@ -5119,7 +5123,6 @@ void RE_LoadWorldMap( const char *name )
 	tr.worldLight = tr.lightMode;
 	tr.modelLight = lightMode_t::FULLBRIGHT;
 	tr.modelDeluxe = deluxeMode_t::NONE;
-	tr.mapLightFactor = tr.identityLight = 1.0f;
 
 	// Use fullbright lighting for everything if the world is fullbright.
 	if ( tr.worldLight != lightMode_t::FULLBRIGHT )
