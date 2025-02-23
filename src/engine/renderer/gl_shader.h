@@ -3795,6 +3795,66 @@ public:
 	}
 };
 
+class u_Tonemap :
+	GLUniform1Bool {
+	public:
+	u_Tonemap( GLShader* shader ) :
+		GLUniform1Bool( shader, "u_Tonemap", true ) {
+	}
+
+	void SetUniform_Tonemap( bool tonemap ) {
+		this->SetValue( tonemap );
+	}
+};
+
+class u_TonemapAdaptiveExposure :
+	GLUniform1Bool {
+	public:
+	u_TonemapAdaptiveExposure( GLShader* shader ) :
+		GLUniform1Bool( shader, "u_TonemapAdaptiveExposure", true ) {
+	}
+
+	void SetUniform_TonemapAdaptiveExposure( bool tonemapAdaptiveExposure ) {
+		this->SetValue( tonemapAdaptiveExposure );
+	}
+};
+
+class u_TonemapParms :
+	GLUniform4f {
+	public:
+	u_TonemapParms( GLShader* shader ) :
+		GLUniform4f( shader, "u_TonemapParms", true ) {
+	}
+
+	void SetUniform_TonemapParms( vec4_t tonemapParms ) {
+		this->SetValue( tonemapParms );
+	}
+};
+
+class u_TonemapParms2 :
+	GLUniform4f {
+	public:
+	u_TonemapParms2( GLShader* shader ) :
+		GLUniform4f( shader, "u_TonemapParms2", true ) {
+	}
+
+	void SetUniform_TonemapParms2( vec4_t tonemapParms2 ) {
+		this->SetValue( tonemapParms2 );
+	}
+};
+
+class u_TonemapExposure :
+	GLUniform1f {
+	public:
+	u_TonemapExposure( GLShader* shader ) :
+		GLUniform1f( shader, "u_TonemapExposure", true ) {
+	}
+
+	void SetUniform_TonemapExposure( float tonemapExposure ) {
+		this->SetValue( tonemapExposure );
+	}
+};
+
 class u_LightGridOrigin :
 	GLUniform3f
 {
@@ -4191,6 +4251,16 @@ public:
 	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
 };
 
+class GLShader_luminanceReduction :
+	public GLShader,
+	public u_ViewWidth,
+	public u_ViewHeight,
+	public u_TonemapParms2 {
+	public:
+	GLShader_luminanceReduction( GLShaderManager* manager );
+	void SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) override;
+};
+
 class GLShader_shadowFill :
 	public GLShader,
 	public u_ColorMap,
@@ -4427,6 +4497,12 @@ class GLShader_cameraEffects :
 	public u_ColorModulate,
 	public u_TextureMatrix,
 	public u_ModelViewProjectionMatrix,
+	public u_ViewWidth,
+	public u_ViewHeight,
+	public u_Tonemap,
+	public u_TonemapAdaptiveExposure,
+	public u_TonemapParms,
+	public u_TonemapExposure,
 	public u_InverseGamma
 {
 public:
@@ -4661,6 +4737,7 @@ extern GLShader_lightMappingMaterial            *gl_lightMappingShaderMaterial;
 extern GLShader_forwardLighting_omniXYZ         *gl_forwardLightingShader_omniXYZ;
 extern GLShader_forwardLighting_projXYZ         *gl_forwardLightingShader_projXYZ;
 extern GLShader_forwardLighting_directionalSun  *gl_forwardLightingShader_directionalSun;
+extern GLShader_luminanceReduction              *gl_luminanceReductionShader;
 extern GLShader_shadowFill                      *gl_shadowFillShader;
 extern GLShader_reflection                      *gl_reflectionShader;
 extern GLShader_reflectionMaterial              *gl_reflectionShaderMaterial;
@@ -4687,5 +4764,6 @@ extern GLShader_depthtile2                      *gl_depthtile2Shader;
 extern GLShader_lighttile                       *gl_lighttileShader;
 extern GLShader_fxaa                            *gl_fxaaShader;
 extern GLShaderManager                           gl_shaderManager;
+extern GLBuffer luminanceBuffer;
 
 #endif // GL_SHADER_H

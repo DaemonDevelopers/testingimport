@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* cull_cp.glsl */
 
 #insert common_cp
+#insert material_cp
 
 // Keep this to 64 because we don't want extra shared mem etc. to be allocated, and to minimize wasted lanes
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;

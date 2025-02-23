@@ -204,6 +204,25 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 	Cvar::Cvar<bool> r_highPrecisionRendering("r_highPrecisionRendering", "use high precision frame buffers for rendering and blending", Cvar::NONE, true);
 
 	cvar_t      *r_gamma;
+
+	Cvar::Cvar<bool> r_tonemap( "r_tonemap", "Use HDR->LDR tonemapping", Cvar::NONE, true );
+	Cvar::Cvar<bool> r_tonemapAdaptiveExposure( "r_tonemapAdaptiveExposure",
+		"Use adaptive exposure based on scene brightness", Cvar::NONE, false );
+	Cvar::Cvar<float> r_tonemapExposure( "r_tonemapExposure", "Tonemap exposure", Cvar::NONE, 1.0f );
+	Cvar::Range<Cvar::Cvar<float>> r_tonemapContrast( "r_tonemapContrast", "Makes dark areas light up faster",
+		Cvar::NONE, 1.6f, 1.0f, 10.0f );
+	Cvar::Range<Cvar::Cvar<float>> r_tonemapHighlightsCompressionSpeed( "r_tonemapHighlightsCompressionSpeed",
+		"Highlights saturation",
+		Cvar::NONE, 0.977f, 0.0f, 10.0f );
+	Cvar::Range<Cvar::Cvar<float>> r_tonemapHDRMax( "r_tonemapHDRMax", "HDR white point",
+		Cvar::NONE, 8.0f, 1.0f, 128.0f );
+	Cvar::Range<Cvar::Cvar<float>> r_tonemapDarkAreaPointHDR( "r_tonemapDarkAreaPointHDR",
+		"Cut-off for dark area light-up",
+		Cvar::NONE, 0.18f, 0.0f, 1.0f );
+	Cvar::Range<Cvar::Cvar<float>> r_tonemapDarkAreaPointLDR( "r_tonemapDarkAreaPointLDR",
+		"Convert to this brightness at dark area cut-off",
+		Cvar::NONE, 0.268f, 0.0f, 1.0f );
+
 	cvar_t      *r_lockpvs;
 	cvar_t      *r_noportals;
 

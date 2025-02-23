@@ -2985,6 +2985,15 @@ enum class shaderProfilerRenderSubGroupsMode {
 	extern cvar_t *r_mode; // video mode
 	extern cvar_t *r_gamma;
 
+	extern Cvar::Cvar<bool> r_tonemap;
+	extern Cvar::Cvar<bool> r_tonemapAdaptiveExposure;
+	extern Cvar::Cvar<float> r_tonemapExposure;
+	extern Cvar::Range<Cvar::Cvar<float>> r_tonemapContrast;
+	extern Cvar::Range<Cvar::Cvar<float>> r_tonemapHighlightsCompressionSpeed;
+	extern Cvar::Range<Cvar::Cvar<float>> r_tonemapHDRMax;
+	extern Cvar::Range<Cvar::Cvar<float>> r_tonemapDarkAreaPointHDR;
+	extern Cvar::Range<Cvar::Cvar<float>> r_tonemapDarkAreaPointLDR;
+
 	extern cvar_t *r_nobind; // turns off binding to appropriate textures
 	extern cvar_t *r_singleShader; // make most world faces use default shader
 	extern cvar_t *r_picMip; // controls picmip values

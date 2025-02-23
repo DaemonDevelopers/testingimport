@@ -54,6 +54,7 @@ GLShader_lightMappingMaterial            *gl_lightMappingShaderMaterial = nullpt
 GLShader_forwardLighting_omniXYZ         *gl_forwardLightingShader_omniXYZ = nullptr;
 GLShader_forwardLighting_projXYZ         *gl_forwardLightingShader_projXYZ = nullptr;
 GLShader_forwardLighting_directionalSun  *gl_forwardLightingShader_directionalSun = nullptr;
+GLShader_luminanceReduction              *gl_luminanceReductionShader = nullptr;
 GLShader_shadowFill                      *gl_shadowFillShader = nullptr;
 GLShader_reflection                      *gl_reflectionShader = nullptr;
 GLShader_reflectionMaterial              *gl_reflectionShaderMaterial = nullptr;
@@ -80,6 +81,7 @@ GLShader_depthtile2                      *gl_depthtile2Shader = nullptr;
 GLShader_lighttile                       *gl_lighttileShader = nullptr;
 GLShader_fxaa                            *gl_fxaaShader = nullptr;
 GLShaderManager                           gl_shaderManager;
+GLBuffer luminanceBuffer( "luminance", Util::ordinal( BufferBind::LUMINANCE ), GL_MAP_WRITE_BIT, GL_MAP_INVALIDATE_RANGE_BIT );
 
 namespace // Implementation details
 {
@@ -405,6 +407,9 @@ static const std::vector<addedExtension_t> fragmentVertexAddedExtensions = {
 	where the core variables have different names. */
 	{ glConfig2.shaderDrawParametersAvailable, -1, "ARB_shader_draw_parameters" },
 	{ glConfig2.SSBOAvailable, 430, "ARB_shader_storage_buffer_object" },
+	{ glConfig2.shadingLanguage420PackAvailable, 420, "ARB_shading_language_420pack" },
+	{ glConfig2.explicitUniformLocationAvailable, 430, "ARB_explicit_uniform_location" },
+	{ glConfig2.shaderAtomicCountersAvailable, 420, "ARB_shader_atomic_counters" },
 	/* Even though these are part of the GL_KHR_shader_subgroup extension, we need to enable
 	the individual extensions for each feature.
 	GL_KHR_shader_subgroup itself can't be used in the shader. */
@@ -552,6 +557,10 @@ static std::string GenVertexHeader() {
 		AddDefine( str, "BIND_LIGHTMAP_DATA", Util::ordinal( BufferBind::LIGHTMAP_DATA ) );
 	}
 
+	if ( glConfig2.adaptiveExposureAvailable ) {
+		AddDefine( str, "BIND_LUMINANCE", Util::ordinal( BufferBind::LUMINANCE ) );
+	}
+
 	return str;
 }
 
@@ -592,6 +601,10 @@ static std::string GenFragmentHeader() {
 		AddDefine( str, "BIND_LIGHTMAP_DATA", Util::ordinal( BufferBind::LIGHTMAP_DATA ) );
 	}
 
+	if ( glConfig2.adaptiveExposureAvailable ) {
+		AddDefine( str, "BIND_LUMINANCE", Util::ordinal( BufferBind::LUMINANCE ) );
+	}
+
 	return str;
 }
 
@@ -615,6 +628,10 @@ static std::string GenComputeHeader() {
 		AddDefine( str, "BIND_PORTAL_SURFACES", Util::ordinal( BufferBind::PORTAL_SURFACES ) );
 
 		AddDefine( str, "BIND_DEBUG", Util::ordinal( BufferBind::DEBUG ) );
+	}
+
+	if ( glConfig2.adaptiveExposureAvailable ) {
+		AddDefine( str, "BIND_LUMINANCE", Util::ordinal( BufferBind::LUMINANCE ) );
 	}
 
 	if ( glConfig2.usingBindlessTextures ) {
@@ -2640,6 +2657,17 @@ void GLShader_forwardLighting_directionalSun::SetShaderProgramUniforms( shaderPr
 	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_HeightMap" ), 15 );
 }
 
+GLShader_luminanceReduction::GLShader_luminanceReduction( GLShaderManager* manager ) :
+	GLShader( "luminanceReduction", 0, manager, false, false, true ),
+	u_ViewWidth( this ),
+	u_ViewHeight( this ),
+	u_TonemapParms2( this ) {
+}
+
+void GLShader_luminanceReduction::SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) {
+	glUniform1i( glGetUniformLocation( shaderProgram->program, "initialRenderImage" ), 0 );
+}
+
 GLShader_shadowFill::GLShader_shadowFill( GLShaderManager *manager ) :
 	GLShader( "shadowFill", ATTR_POSITION | ATTR_TEXCOORD | ATTR_QTANGENT, manager ),
 	u_ColorMap( this ),
@@ -2910,6 +2938,12 @@ GLShader_cameraEffects::GLShader_cameraEffects( GLShaderManager *manager ) :
 	u_ColorModulate( this ),
 	u_TextureMatrix( this ),
 	u_ModelViewProjectionMatrix( this ),
+	u_ViewWidth( this ),
+	u_ViewHeight( this ),
+	u_Tonemap( this ),
+	u_TonemapAdaptiveExposure( this ),
+	u_TonemapParms( this ),
+	u_TonemapExposure( this ),
 	u_InverseGamma( this )
 {
 }

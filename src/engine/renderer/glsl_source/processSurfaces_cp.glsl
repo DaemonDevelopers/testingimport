@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* processSurfaces_cp.glsl */
 
 #insert common_cp
+#insert material_cp
 
 // Keep this to 64 because we don't want extra shared mem etc. to be allocated, and to minimize wasted lanes
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
@@ -59,15 +60,10 @@ uniform uint u_Frame;
 uniform uint u_ViewID;
 uniform uint u_SurfaceCommandsOffset;
 
-#if defined(HAVE_KHR_shader_subgroup_basic) && defined(HAVE_KHR_shader_subgroup_arithmetic)\
-	&& defined(HAVE_KHR_shader_subgroup_ballot) && defined(HAVE_ARB_shader_atomic_counter_ops)
-	#define HAVE_processSurfaces_subgroup
-#endif
-
 void AddDrawCommand( in uint commandID, in uvec2 materialID ) {
 	SurfaceCommand command = surfaceCommands[commandID + u_SurfaceCommandsOffset];
 
-	#if defined(HAVE_processSurfaces_subgroup)
+	#if defined(HAVE_subgroup_stream_compaction)
 		const uint count = subgroupBallotBitCount( subgroupBallot( command.enabled ) );
 		// Exclusive scan so we can determine the offset for each lane without any synchronization
 		const uint subgroupOffset = subgroupExclusiveAdd( command.enabled ? 1 : 0 );
@@ -83,13 +79,6 @@ void AddDrawCommand( in uint commandID, in uvec2 materialID ) {
 	#endif
 	
 	if( command.enabled ) {
-		// materialID.x is the global ID of the material
-		// materialID.y is the offset for the memory allocated to the material's culled commands
-		#if !defined(HAVE_processSurfaces_subgroup)
-			const uint atomicCmdID = atomicCounterIncrement( atomicCommandCounters[materialID.x
-															 + MAX_COMMAND_COUNTERS * ( MAX_VIEWS * u_Frame + u_ViewID )] );
-		#endif
-		
 		GLIndirectCommand indirectCommand;
 		indirectCommand.count = command.drawCommand.count;
 		indirectCommand.instanceCount = 1;
@@ -97,9 +86,13 @@ void AddDrawCommand( in uint commandID, in uvec2 materialID ) {
 		indirectCommand.baseVertex = 0;
 		indirectCommand.baseInstance = command.drawCommand.baseInstance;
 		
-		#if defined(HAVE_processSurfaces_subgroup)
+		// materialID.x is the global ID of the material
+		// materialID.y is the offset for the memory allocated to the material's culled commands
+		#if defined(HAVE_subgroup_stream_compaction)
 			culledCommands[atomicCmdID + subgroupOffset + materialID.y * MAX_COMMAND_COUNTERS + u_SurfaceCommandsOffset] = indirectCommand;
 		#else
+			const uint atomicCmdID = atomicCounterIncrement( atomicCommandCounters[materialID.x
+		                                                     + MAX_COMMAND_COUNTERS * ( MAX_VIEWS * u_Frame + u_ViewID )] );
 			culledCommands[atomicCmdID + materialID.y * MAX_COMMAND_COUNTERS + u_SurfaceCommandsOffset] = indirectCommand;
 		#endif
 	}

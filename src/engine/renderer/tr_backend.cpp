@@ -3302,6 +3302,61 @@ void RB_FXAA()
 	GL_CheckErrors();
 }
 
+static void RB_AdaptiveLightingReduction() {
+	uint32_t data = 0;
+	luminanceBuffer.BufferData( 1, &data, GL_STATIC_DRAW );
+	luminanceBuffer.UnmapBuffer();
+
+	luminanceBuffer.BindBufferBase( GL_ATOMIC_COUNTER_BUFFER );
+
+	gl_luminanceReductionShader->BindProgram( 0 );
+
+	int width = tr.currentRenderImage[backEnd.currentMainFBO]->width;
+	int height = tr.currentRenderImage[backEnd.currentMainFBO]->height;
+
+	uint32_t globalWorkgroupX = ( width + 7 ) / 8;
+	uint32_t globalWorkgroupY = ( height + 7 ) / 8;
+
+	GL_Bind( tr.currentRenderImage[backEnd.currentMainFBO] );
+
+	gl_luminanceReductionShader->SetUniform_ViewWidth( width );
+	gl_luminanceReductionShader->SetUniform_ViewHeight( height );
+	vec4_t parms { log2f( r_tonemapHDRMax.Get() ) };
+	gl_luminanceReductionShader->SetUniform_TonemapParms2( parms );
+	gl_luminanceReductionShader->DispatchCompute( globalWorkgroupX, globalWorkgroupY, 1 );
+
+	glMemoryBarrier( GL_UNIFORM_BARRIER_BIT );
+}
+
+static void ComputeTonemapParams( const float contrast, const float highlightsCompressionSpeed,
+	const float HDRMax,
+	const float darkAreaPointHDR, const float darkAreaPointLDR,
+	float& shoulderClip, float& highlightsCompression ) {
+	// Lottes 2016, "Advanced Techniques and Optimization of HDR Color Pipelines"
+	/* a: contrast
+	d: highlightsCompressionSpeed
+	b: shoulderClip
+	c: highlightsCompression
+	hdrMax: HDRMax
+	midIn: darkAreaPointHDR
+	midOut: darkAreaPointLDR */
+
+	shoulderClip =
+		( -powf( darkAreaPointHDR, contrast ) + powf( HDRMax, contrast ) * darkAreaPointLDR )
+		/
+		( ( powf( HDRMax, contrast * highlightsCompressionSpeed )
+			- powf( darkAreaPointHDR, contrast * highlightsCompressionSpeed )
+		) * darkAreaPointLDR );
+	highlightsCompression =
+		( powf( HDRMax, contrast * highlightsCompressionSpeed ) * powf( darkAreaPointHDR, contrast )
+			- powf( HDRMax, contrast ) * powf( darkAreaPointHDR, contrast * highlightsCompressionSpeed ) * darkAreaPointLDR
+		)
+		/
+		( ( powf( HDRMax, contrast * highlightsCompressionSpeed )
+			- powf( darkAreaPointHDR, contrast * highlightsCompressionSpeed )
+		) * darkAreaPointLDR );
+}
+
 void RB_CameraPostFX()
 {
 	matrix_t ortho;
@@ -3332,6 +3387,22 @@ void RB_CameraPostFX()
 
 	gl_cameraEffectsShader->SetUniform_InverseGamma( 1.0 / r_gamma->value );
 
+	const bool tonemap = r_tonemap.Get() && r_highPrecisionRendering.Get() && glConfig2.textureFloatAvailable;
+	if ( tonemap ) {
+		gl_cameraEffectsShader->SetUniform_ViewWidth( tr.currentRenderImage[backEnd.currentMainFBO]->width );
+		gl_cameraEffectsShader->SetUniform_ViewHeight( tr.currentRenderImage[backEnd.currentMainFBO]->height );
+
+		vec4_t tonemapParms { r_tonemapContrast.Get(), r_tonemapHighlightsCompressionSpeed.Get() };
+		ComputeTonemapParams( tonemapParms[0], tonemapParms[1], r_tonemapHDRMax.Get(),
+			r_tonemapDarkAreaPointHDR.Get(), r_tonemapDarkAreaPointLDR.Get(), tonemapParms[2], tonemapParms[3] );
+		gl_cameraEffectsShader->SetUniform_TonemapParms( tonemapParms );
+
+		gl_cameraEffectsShader->SetUniform_TonemapAdaptiveExposure(
+			glConfig2.adaptiveExposureAvailable && r_tonemapAdaptiveExposure.Get() );
+		gl_cameraEffectsShader->SetUniform_TonemapExposure( r_tonemapExposure.Get() );
+	}
+	gl_cameraEffectsShader->SetUniform_Tonemap( tonemap );
+
 	// This shader is run last, so let it render to screen instead of
 	// tr.mainFBO
 	R_BindNullFBO();
@@ -3342,6 +3413,10 @@ void RB_CameraPostFX()
 	if ( glConfig2.colorGrading )
 	{
 		gl_cameraEffectsShader->SetUniform_ColorMap3DBindless( GL_BindToTMU( 3, tr.colorGradeImage ) );
+	}
+
+	if ( glConfig2.adaptiveExposureAvailable && r_tonemapAdaptiveExposure.Get() ) {
+		luminanceBuffer.BindBufferBase( GL_UNIFORM_BUFFER );
 	}
 
 	// draw viewport
@@ -4766,6 +4841,10 @@ static void RB_RenderPostProcess()
 		// We'll only use the results from those shaders in the next frame so we don't block the pipeline
 		materialSystem.CullSurfaces();
 		materialSystem.EndFrame();
+	}
+
+	if ( glConfig2.adaptiveExposureAvailable && r_tonemapAdaptiveExposure.Get() ) {
+		RB_AdaptiveLightingReduction();
 	}
 
 	RB_FXAA();
