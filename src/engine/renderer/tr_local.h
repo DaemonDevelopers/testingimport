@@ -825,7 +825,7 @@ enum class shaderProfilerRenderSubGroupsMode {
 	enum class colorGen_t
 	{
 	  CGEN_BAD,
-	  CGEN_IDENTITY_LIGHTING, // Always (1,1,1,1) in Dæmon engine as the overbright bit implementation is fully software.
+	  CGEN_IDENTITY_LIGHTING, // Always (1,1,1,1) in Dæmon engine, unless you set r_overbrightQ3.
 	  CGEN_IDENTITY, // always (1,1,1,1)
 	  CGEN_ENTITY, // grabbed from entity's modulate field
 	  CGEN_ONE_MINUS_ENTITY, // grabbed from 1 - entity.modulate
@@ -2811,12 +2811,16 @@ enum class shaderProfilerRenderSubGroupsMode {
 
 		viewParms_t    viewParms;
 
-		// r_overbrightDefaultExponent, but can be overridden by mapper using the worldspawn
+		// Brightness scaling: roughly speaking, a lightmap value of x will be interpreted as
+		// min(x * pow(2, mapOverBrightBits), pow(2, overbrightBits))
+		// (but when a component hits the max allowed value, others are scaled down to keep the "same color")
 		int mapOverBrightBits;
-		// pow(2, mapOverbrightBits)
+		// min(r_overbrightBits.Get(), mapOverBrightBits)
+		int overbrightBits;
+		// pow(2, overbrightBits), unless r_overbrightQ3 is on
 		float mapLightFactor;
-		// May have to be true on some legacy maps: clamp and normalize multiplied colors.
-		bool legacyOverBrightClamping;
+		// 1/pow(2, overbrightBits) if r_overbrightQ3 is on
+		float identityLight;
 
 		orientationr_t orientation; // for current entity
 
@@ -2940,7 +2944,8 @@ enum class shaderProfilerRenderSubGroupsMode {
 	extern cvar_t *r_realtimeLightingCastShadows;
 	extern cvar_t *r_precomputedLighting;
 	extern Cvar::Cvar<int> r_overbrightDefaultExponent;
-	extern Cvar::Cvar<bool> r_overbrightDefaultClamp;
+	extern Cvar::Range<Cvar::Cvar<int>> r_overbrightBits;
+	extern Cvar::Cvar<bool> r_overbrightQ3;
 	extern Cvar::Cvar<bool> r_overbrightIgnoreMapSettings;
 	extern Cvar::Range<Cvar::Cvar<int>> r_lightMode;
 	extern Cvar::Cvar<bool> r_colorGrading;

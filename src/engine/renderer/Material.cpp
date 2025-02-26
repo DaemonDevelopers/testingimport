@@ -59,19 +59,14 @@ static void ComputeDynamics( shaderStage_t* pStage ) {
 	// TODO: Move color and texMatrices stuff to a compute shader
 	pStage->colorDynamic = false;
 	switch ( pStage->rgbGen ) {
+		case colorGen_t::CGEN_IDENTITY_LIGHTING:
 		case colorGen_t::CGEN_IDENTITY:
 		case colorGen_t::CGEN_ONE_MINUS_VERTEX:
-		default:
-		case colorGen_t::CGEN_IDENTITY_LIGHTING:
-			/* Historically CGEN_IDENTITY_LIGHTING was done this way:
-
-			  tess.svars.color = Color::White * tr.identityLight;
-
-			But tr.identityLight is always 1.0f in Dæmon engine
-			as the as the overbright bit implementation is fully
-			software. */
 		case colorGen_t::CGEN_VERTEX:
 		case colorGen_t::CGEN_CONST:
+		default:
+			break;
+
 		case colorGen_t::CGEN_ENTITY:
 		case colorGen_t::CGEN_ONE_MINUS_ENTITY:
 		{

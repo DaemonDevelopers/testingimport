@@ -1853,7 +1853,7 @@ image_t *R_FindImageFile( const char *imageName, imageParams_t &imageParams )
 		return nullptr;
 	}
 
-	if ( imageParams.bits & IF_LIGHTMAP && tr.legacyOverBrightClamping )
+	if ( imageParams.bits & IF_LIGHTMAP )
 	{
 		R_ProcessLightmap( *pic, width, height, imageParams.bits );
 	}
@@ -3054,16 +3054,11 @@ void R_InitImages()
 	tr.lightmaps.reserve( 128 );
 	tr.deluxemaps.reserve( 128 );
 
-	/* These are the values expected by the rest of the renderer
-	(esp. tr_bsp), used for "gamma correction of the map".
-	Both were set to 0 if we had neither COMPAT_ET nor COMPAT_Q3,
-	it may be interesting to remember.
-
-	Quake 3 and Tremulous values:
-
-	  tr.overbrightBits = 0; // Software implementation.
-	  tr.mapOverBrightBits = 2; // Quake 3 default.
-	  tr.identityLight = 1.0f / ( 1 << tr.overbrightBits );
+	/*
+	**** Map overbright bits ****
+	Lightmaps and vertex light colors are notionally scaled up by a factor of
+	pow(2, tr.mapOverBrightBits). This is a good idea because we would like a bright light
+	to make a texture brighter than its original diffuse image.
 
 	Games like Quake 3 and Tremulous require tr.mapOverBrightBits
 	to be set to 2. Because this engine is primarily maintained for
@@ -3089,32 +3084,41 @@ void R_InitImages()
 	require to set a different default than what Unvanquished
 	requires.
 
-	Using a non-zero value for tr.mapOverBrightBits turns light
-	non-linear and makes deluxe mapping buggy though.
+	**** r_overbrightBits ****
+	Although lightmaps are scaled up by pow(2, tr.overbrightBits), the actual ceiling for lightmap
+	values is pow(2, tr.overbrightBits). tr.overbrightBits may
+	be less than tr.mapOverbrightBits. This is a STUPID configuration because then you are
+	just throwing away 1 or bits of precision from the lightmap. But it was used for many games.
 
-	Mappers may port and fix maps by multiplying the lights by 2.5
-	and set the mapOverBrightBits key to 0 in map entities lump.
+	The excess (tr.mapOverbrightBits - tr.overbrightBits) bits of scaling are done to the lightmap
+	before uploading it. If some component exceeds 1, the color is proportionally downscaled until
+	the max component is 1.
 
-	It will be possible to assume tr.mapOverBrightBits is 0 when
-	loading maps compiled with sRGB lightmaps as there is no
-	legacy map using sRGB lightmap yet, and then we will be
-	able to avoid the need to explicitly set mapOverBrightBits
-	to 0 in map entities. It will be required to assume that
-	tr.mapOverBrightBits is 0 when loading maps compiled with
-	sRGB lightmaps because otherwise the color shift computation
-	will break the light computation, not only the deluxe one.
+	Quake 3 and vanilla Tremulous used these default cvar values:
+	  r_overbrightBits - 1
+	  r_mapOverBrightBits - 2
 
-	In legacy engines, tr.overbrightBits was non-zero when
-	hardware overbright bits were enabled, zero when disabled.
-	This engine do not implement hardware overbright bit, so
-	this is always zero, and we can remove it and simplify all
-	the computations making use of it.
+	So the same as Daemon. But if the game was not running in fullscreen mode or the system was
+	not detected as supporting hardware gamma control, tr.overbrightBit would be set to 0.
+	Tremfusion shipped with r_overbrightBits 0 and r_ignorehwgamma 1, either of which forces
+	tr.overbrightBits to 0, making it the same as the vanilla client's windowed mode.
 
-	Because tr.overbrightBits is always 0, tr.identityLight is
-	always 1.0f. We can entirely remove it. */
+	**** How Quake 3 originally implemented overbright ****
+	When hardware overbright was on (tr.overbrightBits = 1), the color buffer notionally ranged
+	from 0 to 2, rather than 0 to 1. So a buffer with 8-bit colors only had 7 bits of
+	output precision (all values 128+ produced the same output), but the extra bit was useful
+	for intermediate values during blending. The rescaling was effected by using the hardware
+	gamma ramp, which affected the whole monitor (or whole system).
+	Shaders for materials that were not illuminated by any precomputed lighting could use
+	CGEN_IDENTITY_LIGHTING to multiply by tr.identityLight, which would cancel out the
+	rescaling so that the material looked the same regardless of tr.overbrightBits.
 
-	tr.mapOverBrightBits = r_overbrightDefaultExponent.Get();
-	tr.legacyOverBrightClamping = r_overbrightDefaultClamp.Get();
+	In Daemon tr.identityLight is usually 1, so any distincion between
+	CGEN_IDENTITY/CGEN_IDENTITY_LIGHTING is ignored. But if you set the cvar r_overbrightQ3,
+	which emulates Quake 3's technique of brightening the whole color buffer, it will be used.
+
+	For even more information, see https://github.com/DaemonEngine/Daemon/issues/1542.
+	*/
 
 	// create default texture and white texture
 	R_CreateBuiltinImages();
