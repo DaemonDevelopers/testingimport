@@ -3877,14 +3877,7 @@ static void R_LoadFogs( lump_t *l, lump_t *brushesLump, lump_t *sidesLump )
 		out->fogParms = shader->fogParms;
 
 		out->color = Color::Adapt( shader->fogParms.color );
-
-		/* Historically it was done:
-
-			out->color *= tr.identityLight;
-
-		But tr.identityLight is always 1.0f in Dæmon engine
-		as the as the overbright bit implementation is fully
-		software. */
+		out->color *= tr.identityLight;
 
 		out->color.SetAlpha( 1 );
 
@@ -5126,6 +5119,7 @@ void RE_LoadWorldMap( const char *name )
 	tr.worldLight = tr.lightMode;
 	tr.modelLight = lightMode_t::FULLBRIGHT;
 	tr.modelDeluxe = deluxeMode_t::NONE;
+	tr.mapLightFactor = tr.identityLight = 1.0f;
 
 	// Use fullbright lighting for everything if the world is fullbright.
 	if ( tr.worldLight != lightMode_t::FULLBRIGHT )
@@ -5197,11 +5191,19 @@ void RE_LoadWorldMap( const char *name )
 		}
 	}
 
-	/* Set GLSL overbright parameters if the legacy clamped overbright isn't used
-	and the lighting mode is not fullbright. */
+	/* Set GLSL overbright parameters if the lighting mode is not fullbright. */
 	if ( tr.lightMode != lightMode_t::FULLBRIGHT )
 	{
-		tr.mapLightFactor = float( 1 << tr.overbrightBits );
+		if ( r_overbrightQ3.Get() )
+		{
+			// light factor is applied to entire color buffer; identityLight can be used to cancel it
+			tr.identityLight = 1.0f / float( 1 << tr.overbrightBits );
+		}
+		else
+		{
+			// light factor is applied wherever a precomputed light is sampled
+			tr.mapLightFactor = float( 1 << tr.overbrightBits );
+		}
 	}
 
 	tr.worldLoaded = true;

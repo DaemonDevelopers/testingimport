@@ -3350,6 +3350,7 @@ void RB_CameraPostFX()
 	// enable shader, set arrays
 	gl_cameraEffectsShader->BindProgram( 0 );
 
+	gl_cameraEffectsShader->SetUniform_GlobalLightFactor( 1.0f / tr.identityLight );
 	gl_cameraEffectsShader->SetUniform_ColorModulate( backEnd.viewParms.gradingWeights );
 
 	gl_cameraEffectsShader->SetUniform_InverseGamma( 1.0 / r_gamma->value );

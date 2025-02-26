@@ -29,6 +29,7 @@ uniform sampler3D u_ColorMap3D;
 #endif
 
 uniform vec4      u_ColorModulate;
+uniform float     u_GlobalLightFactor; // 1 / tr.identityLight
 uniform float     u_InverseGamma;
 
 IN(smooth) vec2		var_TexCoords;
@@ -55,6 +56,7 @@ void main()
 	vec2 st = gl_FragCoord.st / r_FBufSize;
 
 	vec4 color = texture2D(u_CurrentMap, st);
+	color *= u_GlobalLightFactor;
 
 	if( u_Tonemap ) {
 		color.rgb = TonemapLottes( color.rgb * u_TonemapExposure );

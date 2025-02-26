@@ -2321,21 +2321,15 @@ void Tess_ComputeColor( shaderStage_t *pStage )
 	// rgbGen
 	switch ( pStage->rgbGen )
 	{
+		case colorGen_t::CGEN_IDENTITY_LIGHTING:
+			tess.svars.color = Color::Color(tr.identityLight, tr.identityLight, tr.identityLight);
+			break;
+
 		case colorGen_t::CGEN_IDENTITY:
 		case colorGen_t::CGEN_ONE_MINUS_VERTEX:
 		default:
-		case colorGen_t::CGEN_IDENTITY_LIGHTING:
-			/* Historically CGEN_IDENTITY_LIGHTING was done this way:
-
-			  tess.svars.color = Color::White * tr.identityLight;
-
-			But tr.identityLight is always 1.0f in Dæmon engine
-			as the as the overbright bit implementation is fully
-			software. */
-			{
 				tess.svars.color = Color::White;
 				break;
-			}
 
 		case colorGen_t::CGEN_VERTEX:
 			{

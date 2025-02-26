@@ -2897,6 +2897,7 @@ GLShader_cameraEffects::GLShader_cameraEffects( GLShaderManager *manager ) :
 	GLShader( "cameraEffects", ATTR_POSITION | ATTR_TEXCOORD, manager ),
 	u_ColorMap3D( this ),
 	u_CurrentMap( this ),
+	u_GlobalLightFactor( this ),
 	u_ColorModulate( this ),
 	u_TextureMatrix( this ),
 	u_ModelViewProjectionMatrix( this ),
