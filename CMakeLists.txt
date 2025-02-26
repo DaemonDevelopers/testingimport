@@ -513,11 +513,20 @@ endif()
 if (WIN32)
     set(LIBS_BASE ${LIBS_BASE} winmm ws2_32)
 elseif (NACL)
-    if (NOT USE_NACL_SAIGO)
-        find_library(NACL_EXCEPTION nacl_exception)
-        find_library(NACL_MINIDUMP minidump_generator)
-        set(LIBS_BASE ${LIBS_BASE} ${NACL_MINIDUMP} ${NACL_EXCEPTION})
+    find_library(NACL_EXCEPTION nacl_exception)
+    find_library(NACL_MINIDUMP minidump_generator)
+
+    # HACK: To be removed when Saigo is repackaged properly.
+    if (NOT NACL_MINIDUMP
+    # NACL_TARGET is specific to Saigo, PNaCl target is le32 and doesn't set NACL_TARGET.
+    AND "${NACL_TARGET}" STREQUAL "i686"
+    # x86_64-nacl/lib32 is specific to Google build, other builds may provide i686-nacl/lib instead.
+    AND EXISTS "${DEPS_DIR}/saigo_newlib/x86_64-nacl/lib32")
+        set(NACL_EXCEPTION "${DEPS_DIR}/saigo_newlib/x86_64-nacl/lib32/libnacl_exception.a")
+        set(NACL_MINIDUMP "${DEPS_DIR}/saigo_newlib/x86_64-nacl/lib32/libminidump_generator.a")
     endif()
+
+    set(LIBS_BASE ${LIBS_BASE} ${NACL_MINIDUMP} ${NACL_EXCEPTION})
 else()
     find_library(LIBM m)
     if (LIBM)
