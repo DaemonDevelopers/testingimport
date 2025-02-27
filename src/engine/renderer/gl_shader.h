@@ -31,7 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 // *INDENT-OFF*
 static const unsigned int MAX_SHADER_MACROS = 10;
-static const unsigned int GL_SHADER_VERSION = 5;
+static const unsigned int GL_SHADER_VERSION = 6;
 
 class ShaderException : public std::runtime_error
 {
@@ -47,14 +47,13 @@ enum class ShaderKind
 };
 
 // Header for saved shader binaries
-struct GLBinaryHeader
-{
-	unsigned int version;
-	unsigned int checkSum; // checksum of shader source this was built from
-	unsigned int driverVersionHash; // detect if the graphics driver was different
+struct GLBinaryHeader {
+	uint32_t version;
+	uint32_t checkSum; // checksum of shader source this was built from
+	uint32_t driverVersionHash; // detect if the graphics driver was different
 
-	unsigned int macros[ MAX_SHADER_MACROS ]; // macros the shader uses ( may or may not be enabled )
-	unsigned int numMacros;
+	GLuint type;
+	uint32_t macro; // Bitmask of macros the shader uses ( may or may not be enabled )
 
 	GLenum binaryFormat; // argument to glProgramBinary
 	uint32_t binaryLength; // argument to glProgramBinary
@@ -68,14 +67,12 @@ class GLShaderManager;
 
 // represents a piece of GLSL code that can be copied verbatim into
 // GLShaders, like a .h file in C++
-class GLHeader
-{
+class GLHeader {
 private:
-
-	std::string                    _name;
-	std::string                    _text;
+	std::string _name;
+	std::string _text;
 	uint32_t _lineCount;
-	GLShaderManager               *_shaderManager;
+	GLShaderManager *_shaderManager;
 
 public:
 	GLHeader() : _name(), _text(), _lineCount(), _shaderManager( nullptr )
@@ -85,8 +82,7 @@ public:
 		_name( name ),
 		_text( text ),
 		_lineCount( std::count( text.begin(), text.end(), '\n' ) ),
-		_shaderManager( manager )
-	{
+		_shaderManager( manager ) {
 	}
 
 	const std::string &getName() const { return _name; }
@@ -95,44 +91,39 @@ public:
 	const GLShaderManager *getManager() const { return _shaderManager; }
 };
 
-class GLShader
-{
+class GLShader {
 	friend class GLShaderManager;
 private:
 	GLShader( const GLShader & ) = delete;
-	GLShader &operator             = ( const GLShader & ) = delete;
+	GLShader &operator = ( const GLShader & ) = delete;
 
-	std::string                    _name;
-	std::string                    _mainShaderName;
+	std::string _name;
+	std::string _mainShaderName;
 	const bool _useMaterialSystem;
 	GLuint std430Size = 0;
 	uint padding = 0;
 	uint textureCount = 0;
 protected:
-	int                            _activeMacros;
-	unsigned int                   _checkSum;
-	shaderProgram_t                 *_currentProgram;
-	const uint32_t                 _vertexAttribsRequired;
-	uint32_t                       _vertexAttribs; // can be set by uniforms
-	GLShaderManager                 *_shaderManager;
+	int _activeMacros;
+	unsigned int _checkSum;
+	ShaderProgramDescriptor* currentProgram;
+	const uint32_t _vertexAttribsRequired;
+	uint32_t _vertexAttribs; // can be set by uniforms
+	GLShaderManager *_shaderManager;
 
-	bool                           _hasVertexShader;
-	std::string                    _vertexShaderText;
-	bool                           _hasFragmentShader;
-	std::string                    _fragmentShaderText;
-	bool                           _hasComputeShader;
-	std::string                    _computeShaderText;
-	std::vector< shaderProgram_t > _shaderPrograms;
+	bool _hasVertexShader;
+	bool _hasFragmentShader;
+	bool _hasComputeShader;
+	std::vector<ShaderProgramDescriptor> shaderPrograms;
 
+	std::vector<int> vertexShaderDescriptors;
+	std::vector<int> fragmentShaderDescriptors;
+	std::vector<int> computeShaderDescriptors;
 
-	size_t                         _uniformStorageSize;
-	std::vector< GLUniform * >      _uniforms;
-	std::vector< GLUniformBlock * > _uniformBlocks;
-	std::vector< GLCompileMacro * > _compileMacros;
-
-
-
-
+	size_t _uniformStorageSize;
+	std::vector<GLUniform*> _uniforms;
+	std::vector<GLUniformBlock*> _uniformBlocks;
+	std::vector<GLCompileMacro*> _compileMacros;
 
 	GLShader( const std::string &name, uint32_t vertexAttribsRequired, GLShaderManager *manager,
 			  const bool hasVertexShader = true, const bool hasFragmentShader = true, const bool hasComputeShader = false ) :
@@ -141,15 +132,13 @@ protected:
 		_useMaterialSystem( false ),
 		_activeMacros( 0 ),
 		_checkSum( 0 ),
-		_currentProgram( nullptr ),
 		_vertexAttribsRequired( vertexAttribsRequired ),
 		_vertexAttribs( 0 ),
 		_shaderManager( manager ),
 		_hasVertexShader( hasVertexShader ),
 		_hasFragmentShader( hasFragmentShader ),
 		_hasComputeShader( hasComputeShader ),
-		_uniformStorageSize( 0 )
-	{
+		_uniformStorageSize( 0 ) {
 	}
 
 	GLShader( const std::string &name, const std::string &mainShaderName, uint32_t vertexAttribsRequired, GLShaderManager *manager,
@@ -159,15 +148,13 @@ protected:
 		_useMaterialSystem( false ),
 		_activeMacros( 0 ),
 		_checkSum( 0 ),
-		_currentProgram( nullptr ),
 		_vertexAttribsRequired( vertexAttribsRequired ),
 		_vertexAttribs( 0 ),
 		_shaderManager( manager ),
 		_hasVertexShader( hasVertexShader ),
 		_hasFragmentShader( hasFragmentShader ),
 		_hasComputeShader( hasComputeShader ),
-		_uniformStorageSize( 0 )
-	{
+		_uniformStorageSize( 0 ) {
 	}
 
 	GLShader( const std::string& name, const std::string& mainShaderName, const bool useMaterialSystem, uint32_t vertexAttribsRequired,
@@ -178,7 +165,6 @@ protected:
 		_useMaterialSystem( useMaterialSystem ),
 		_activeMacros( 0 ),
 		_checkSum( 0 ),
-		_currentProgram( nullptr ),
 		_vertexAttribsRequired( vertexAttribsRequired ),
 		_vertexAttribs( 0 ),
 		_shaderManager( manager ),
@@ -189,57 +175,16 @@ protected:
 	}
 
 public:
-	virtual ~GLShader()
-	{
-		for ( std::size_t i = 0; i < _shaderPrograms.size(); i++ )
-		{
-			shaderProgram_t *p = &_shaderPrograms[ i ];
-
-			if ( p->program )
-			{
-				glDeleteProgram( p->program );
-			}
-
-			if ( p->VS )
-			{
-				glDeleteShader( p->VS );
-			}
-
-			if ( p->FS )
-			{
-				glDeleteShader( p->FS );
-			}
-
-			if ( p->CS ) {
-				glDeleteShader( p->CS );
-			}
-
-			if ( p->uniformFirewall )
-			{
-				Z_Free( p->uniformFirewall );
-			}
-
-			if ( p->uniformLocations )
-			{
-				Z_Free( p->uniformLocations );
-			}
-
-			if ( p->uniformBlockIndexes )
-			{
-				Z_Free( p->uniformBlockIndexes );
-			}
-		}
+	virtual ~GLShader() {
 	}
 
 	void RegisterUniform( GLUniform* uniform );
 
-	void RegisterUniformBlock( GLUniformBlock *uniformBlock )
-	{
+	void RegisterUniformBlock( GLUniformBlock *uniformBlock ) {
 		_uniformBlocks.push_back( uniformBlock );
 	}
 
-	void RegisterCompileMacro( GLCompileMacro *compileMacro )
-	{
+	void RegisterCompileMacro( GLCompileMacro *compileMacro ) {
 		if ( _compileMacros.size() >= MAX_SHADER_MACROS )
 		{
 			Sys::Drop( "Can't register more than %u compile macros for a single shader", MAX_SHADER_MACROS );
@@ -248,34 +193,31 @@ public:
 		_compileMacros.push_back( compileMacro );
 	}
 
-	size_t GetNumOfCompiledMacros() const
-	{
+	size_t GetNumOfCompiledMacros() const {
 		return _compileMacros.size();
 	}
 
 	GLint GetUniformLocation( const GLchar *uniformName ) const;
 
-	shaderProgram_t        *GetProgram() const
-	{
-		return _currentProgram;
+	ShaderProgramDescriptor* GetProgram() const {
+		return currentProgram;
 	}
 
-	const std::string      &GetName() const
-	{
+	const std::string &GetName() const {
 		return _name;
 	}
 
-	const std::string      &GetMainShaderName() const
-	{
+	const std::string &GetMainShaderName() const {
 		return _mainShaderName;
 	}
 
 protected:
-	void         PostProcessUniforms();
-	bool         GetCompileMacrosString( size_t permutation, std::string &compileMacrosOut ) const;
+	void PostProcessUniforms();
+	uint32_t GetUniqueCompileMacros( size_t permutation, const int type ) const;
+	bool GetCompileMacrosString( size_t permutation, std::string &compileMacrosOut, const int type ) const;
 	virtual void BuildShaderCompileMacros( std::string& /*vertexInlines*/ ) { };
-	virtual void SetShaderProgramUniforms( shaderProgram_t* /*shaderProgram*/ ) { };
-	int          SelectProgram();
+	virtual void SetShaderProgramUniforms( ShaderProgramDescriptor* /*shaderProgram*/ ) { };
+	int SelectProgram();
 public:
 	GLuint GetProgram( int deformIndex );
 	void BindProgram( int deformIndex );
@@ -283,33 +225,27 @@ public:
 	void DispatchComputeIndirect( const GLintptr indirectBuffer );
 	void SetRequiredVertexPointers();
 
-	bool IsMacroSet( int bit )
-	{
+	bool IsMacroSet( int bit ) {
 		return ( _activeMacros & bit ) != 0;
 	}
 
-	void AddMacroBit( int bit )
-	{
+	void AddMacroBit( int bit ) {
 		_activeMacros |= bit;
 	}
 
-	void DelMacroBit( int bit )
-	{
+	void DelMacroBit( int bit ) {
 		_activeMacros &= ~bit;
 	}
 
-	bool IsVertexAttribSet( int bit )
-	{
+	bool IsVertexAttribSet( int bit ) {
 		return ( _vertexAttribs & bit ) != 0;
 	}
 
-	void AddVertexAttribBit( int bit )
-	{
+	void AddVertexAttribBit( int bit ) {
 		_vertexAttribs |= bit;
 	}
 
-	void DelVertexAttribBit( int bit )
-	{
+	void DelVertexAttribBit( int bit ) {
 		_vertexAttribs &= ~bit;
 	}
 
@@ -336,12 +272,102 @@ public:
 	void WriteUniformsToBuffer( uint32_t* buffer );
 };
 
-class GLShaderManager
-{
-	std::queue< GLShader* > _shaderBuildQueue;
-	std::vector< std::unique_ptr< GLShader > > _shaders;
-	std::unordered_map< std::string, int > _deformShaderLookup;
-	std::vector< GLint > _deformShaders;
+struct ShaderEntry {
+	std::string name;
+	uint32_t macro;
+	GLuint type;
+
+	bool operator==( const ShaderEntry& other ) const {
+		return name == other.name && macro == other.macro && type == other.type;
+	}
+
+	bool operator!=( const ShaderEntry& other ) const {
+		return !( *this == other );
+	}
+};
+
+struct ShaderDescriptor {
+	std::string name;
+
+	std::string macros;
+	uint32_t macro;
+
+	GLenum type;
+	bool main = false;
+
+	GLuint id = 0;
+
+	std::string shaderSource;
+};
+
+static const uint32_t MAX_SHADER_PROGRAM_SHADERS = 16;
+
+struct ShaderProgramDescriptor {
+	GLuint id = 0;
+
+	bool hasMain = false;
+	GLuint type;
+
+	uint32_t macro = 0;
+
+	GLuint shaders[MAX_SHADER_PROGRAM_SHADERS] {};
+	ShaderEntry shaderNames[MAX_SHADER_PROGRAM_SHADERS] {};
+	std::string mainShader;
+	uint32_t shaderCount = 0;
+
+	GLint* uniformLocations;
+	GLuint* uniformBlockIndexes;
+	byte* uniformFirewall;
+
+	uint32_t checkSum;
+
+	void AttachShader( ShaderDescriptor* descriptor ) {
+		if ( shaderCount == MAX_SHADER_PROGRAM_SHADERS ) {
+			Log::Warn( "Tried to attach too many shaders to program: skipping shader %s %s", descriptor->name, descriptor->macros );
+			return;
+		}
+
+		if ( !shaderCount ) {
+			type = descriptor->type;
+		} else if ( type != descriptor->type ) {
+			type = 0;
+		}
+
+		if ( descriptor->main ) {
+			if ( hasMain && mainShader != descriptor->name ) {
+				Log::Warn( "More than one shader specified as main, current: %s, new: %s, using current",
+					mainShader, descriptor->name );
+			} else {
+				mainShader = descriptor->name;
+				hasMain = true;
+			}
+		}
+
+		shaders[shaderCount] = descriptor->id;
+
+		shaderNames[shaderCount].name = descriptor->name;
+		shaderNames[shaderCount].macro = descriptor->macro;
+		shaderNames[shaderCount].type = descriptor->type;
+
+		macro |= descriptor->macro;
+
+		/* std::sort( shaderNames, shaderNames + shaderCount,
+			[]( const ShaderEntry& lhs, const ShaderEntry& rhs ) {
+				return lhs.name < rhs.name;
+			}
+		); */
+
+		shaderCount++;
+	};
+};
+
+class GLShaderManager {
+	std::queue<GLShader*> _shaderBuildQueue;
+	std::vector<std::unique_ptr<GLShader>> _shaders;
+
+	uint32_t deformShaderCount = 0;
+	std::unordered_map<std::string, int> _deformShaderLookup;
+
 	unsigned int _driverVersionHash; // For cache invalidation if hardware changes
 	bool _shaderBinaryCacheInvalidated;
 
@@ -363,11 +389,12 @@ public:
 	void GenerateBuiltinHeaders();
 	void GenerateWorldHeaders();
 
-	template< class T >
-	void load( T *& shader )
-	{
-		if( _deformShaders.size() == 0 ) {
-			Q_UNUSED(getDeformShaderIndex( nullptr, 0 ));
+	template<class T>
+	void LoadShader( T *& shader ) {
+		if( !deformShaderCount ) {
+			Q_UNUSED( GetDeformShaderIndex( nullptr, 0 ) );
+			initTime = 0;
+			initCount = 0;
 		}
 
 		shader = new T( this );
@@ -375,12 +402,12 @@ public:
 		_shaders.emplace_back( shader );
 		_shaderBuildQueue.push( shader );
 	}
-	void freeAll();
 
-	int getDeformShaderIndex( deformStage_t *deforms, int numDeforms );
+	int GetDeformShaderIndex( deformStage_t *deforms, int numDeforms );
 
-	bool buildPermutation( GLShader *shader, int macroIndex, int deformIndex );
-	void buildAll();
+	bool BuildPermutation( GLShader* shader, int macroIndex, int deformIndex );
+	void BuildAll();
+	void FreeAll();
 private:
 	struct InfoLogEntry {
 		int line;
@@ -389,25 +416,44 @@ private:
 		std::string error;
 	};
 
-	bool LoadShaderBinary( GLShader *shader, size_t permutation );
-	void SaveShaderBinary( GLShader *shader, size_t permutation );
-	GLuint CompileShader( Str::StringRef programName, Str::StringRef shaderText,
-			      std::initializer_list<const GLHeader *> headers,
-			      GLenum shaderType ) const;
-	void CompileGPUShaders( GLShader *shader, shaderProgram_t *program,
-				const std::string &compileMacros );
-	void CompileAndLinkGPUShaderProgram( GLShader *shader, shaderProgram_t *program,
-	                                     Str::StringRef compileMacros, int deformIndex );
-	std::string ShaderPostProcess( GLShader *shader, const std::string& shaderText );
+	std::vector<ShaderDescriptor> shaderDescriptors;
+	std::vector<ShaderProgramDescriptor> shaderProgramDescriptors;
+
+	int compileTime;
+	uint32_t compileCount;
+	int linkTime;
+	uint32_t linkCount;
+	int initTime;
+	uint32_t initCount;
+	int cacheLoadTime;
+	uint32_t cacheLoadCount;
+	int cacheSaveTime;
+	uint32_t cacheSaveCount;
+
+	void BuildShader( ShaderDescriptor* descriptor );
+	void BuildShaderProgram( ShaderProgramDescriptor* descriptor );
+
+	std::string GetDeformShaderName( const int index );
+	ShaderProgramDescriptor* FindShaderProgram( std::vector<ShaderEntry>& shaders, const std::string& mainShader );
+
+	bool LoadShaderBinary( const std::vector<ShaderEntry>& shaders, const std::string& mainShader,
+		ShaderProgramDescriptor* out );
+	void SaveShaderBinary( ShaderProgramDescriptor* descriptor );
+
+	std::string ShaderPostProcess( GLShader *shader, const std::string& shaderText, const uint32_t offset );
 	std::string BuildDeformShaderText( const std::string& steps );
-	std::string ProcessInserts( const std::string& shaderText, const uint32_t offset ) const;
+	std::string ProcessInserts( const std::string& shaderText ) const;
 	void LinkProgram( GLuint program ) const;
 	void BindAttribLocations( GLuint program ) const;
 	void PrintShaderSource( Str::StringRef programName, GLuint object, std::vector<InfoLogEntry>& infoLogLines ) const;
 	std::vector<InfoLogEntry> ParseInfoLog( const std::string& infoLog ) const;
 	std::string GetInfoLog( GLuint object ) const;
-	void InitShader( GLShader *shader );
-	void UpdateShaderProgramUniformLocations( GLShader *shader, shaderProgram_t *shaderProgram ) const;
+	std::string BuildShaderText( const std::string& mainShaderText, const std::vector<GLHeader*>& headers, const std::string& macros );
+	ShaderDescriptor* FindShader( const std::string& name, const std::string& mainText,
+		const GLenum type, const std::vector<GLHeader*>& headers,
+		const uint32_t macro = 0, const std::string& compileMacros = "", const bool main = false );
+	void InitShader( GLShader* shader );
+	void UpdateShaderProgramUniformLocations( GLShader* shader, ShaderProgramDescriptor* shaderProgram ) const;
 };
 
 class GLUniform
@@ -486,9 +532,9 @@ public:
 	// This should return a pointer to the memory right after the one this uniform wrote to
 	virtual uint32_t* WriteToBuffer( uint32_t* buffer );
 
-	void UpdateShaderProgramUniformLocation( shaderProgram_t *shaderProgram )
+	void UpdateShaderProgramUniformLocation( ShaderProgramDescriptor* shaderProgram )
 	{
-		shaderProgram->uniformLocations[ _locationIndex ] = glGetUniformLocation( shaderProgram->program, GetName() );
+		shaderProgram->uniformLocations[_locationIndex] = glGetUniformLocation( shaderProgram->id, GetName() );
 	}
 
 	virtual size_t GetSize()
@@ -505,7 +551,7 @@ class GLUniformSampler : protected GLUniform {
 	}
 
 	inline GLint GetLocation() {
-		shaderProgram_t* p = _shader->GetProgram();
+		ShaderProgramDescriptor* p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -559,7 +605,7 @@ class GLUniformSampler1D : protected GLUniformSampler {
 	}
 
 	inline GLint GetLocation() {
-		shaderProgram_t* p = _shader->GetProgram();
+		ShaderProgramDescriptor* p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -581,7 +627,7 @@ class GLUniformSampler2D : protected GLUniformSampler {
 	}
 
 	inline GLint GetLocation() {
-		shaderProgram_t* p = _shader->GetProgram();
+		ShaderProgramDescriptor* p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -603,7 +649,7 @@ class GLUniformSampler3D : protected GLUniformSampler {
 	}
 
 	inline GLint GetLocation() {
-		shaderProgram_t* p = _shader->GetProgram();
+		ShaderProgramDescriptor* p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -625,7 +671,7 @@ class GLUniformUSampler3D : protected GLUniformSampler {
 	}
 
 	inline GLint GetLocation() {
-		shaderProgram_t* p = _shader->GetProgram();
+		ShaderProgramDescriptor* p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -647,7 +693,7 @@ class GLUniformSamplerCube : protected GLUniformSampler {
 	}
 
 	inline GLint GetLocation() {
-		shaderProgram_t* p = _shader->GetProgram();
+		ShaderProgramDescriptor* p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -672,7 +718,7 @@ protected:
 
 	inline void SetValue( int value )
 	{
-		shaderProgram_t *p = _shader->GetProgram();
+		ShaderProgramDescriptor *p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -725,7 +771,7 @@ class GLUniform1ui : protected GLUniform {
 	}
 
 	inline void SetValue( uint value ) {
-		shaderProgram_t* p = _shader->GetProgram();
+		ShaderProgramDescriptor* p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -776,7 +822,7 @@ class GLUniform1Bool : protected GLUniform {
 	}
 
 	inline void SetValue( int value ) {
-		shaderProgram_t* p = _shader->GetProgram();
+		ShaderProgramDescriptor* p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -830,7 +876,7 @@ protected:
 
 	inline void SetValue( float value )
 	{
-		shaderProgram_t *p = _shader->GetProgram();
+		ShaderProgramDescriptor *p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -887,7 +933,7 @@ protected:
 
 	inline void SetValue( int numFloats, float *f )
 	{
-		shaderProgram_t *p = _shader->GetProgram();
+		ShaderProgramDescriptor *p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -930,7 +976,7 @@ protected:
 
 	inline void SetValue( const vec2_t v )
 	{
-		shaderProgram_t *p = _shader->GetProgram();
+		ShaderProgramDescriptor *p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -990,7 +1036,7 @@ protected:
 
 	inline void SetValue( const vec3_t v )
 	{
-		shaderProgram_t *p = _shader->GetProgram();
+		ShaderProgramDescriptor *p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -1050,7 +1096,7 @@ protected:
 
 	inline void SetValue( const vec4_t v )
 	{
-		shaderProgram_t *p = _shader->GetProgram();
+		ShaderProgramDescriptor *p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -1107,7 +1153,7 @@ protected:
 
 	inline void SetValue( int numV, vec4_t *v )
 	{
-		shaderProgram_t *p = _shader->GetProgram();
+		ShaderProgramDescriptor *p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -1150,7 +1196,7 @@ protected:
 
 	inline void SetValue( GLboolean transpose, const matrix_t m )
 	{
-		shaderProgram_t *p = _shader->GetProgram();
+		ShaderProgramDescriptor *p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -1205,7 +1251,7 @@ class GLUniformMatrix32f : protected GLUniform {
 	}
 
 	inline void SetValue( GLboolean transpose, const vec_t* m ) {
-		shaderProgram_t* p = _shader->GetProgram();
+		ShaderProgramDescriptor* p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -1251,7 +1297,7 @@ protected:
 
 	inline void SetValue( int numMatrices, GLboolean transpose, const matrix_t *m )
 	{
-		shaderProgram_t *p = _shader->GetProgram();
+		ShaderProgramDescriptor *p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -1293,7 +1339,7 @@ protected:
 
 	inline void SetValue( int numMatrices, GLboolean transpose, const float *m )
 	{
-		shaderProgram_t *p = _shader->GetProgram();
+		ShaderProgramDescriptor *p = _shader->GetProgram();
 
 		if ( _global || !_shader->UseMaterialSystem() ) {
 			ASSERT_EQ( p, glState.currentProgram );
@@ -1351,13 +1397,13 @@ public:
 		return _name.c_str();
 	}
 
-	void UpdateShaderProgramUniformBlockIndex( shaderProgram_t *shaderProgram )
+	void UpdateShaderProgramUniformBlockIndex( ShaderProgramDescriptor* shaderProgram )
 	{
-		shaderProgram->uniformBlockIndexes[ _locationIndex ] = glGetUniformBlockIndex( shaderProgram->program, GetName() );
+		shaderProgram->uniformBlockIndexes[_locationIndex] = glGetUniformBlockIndex( shaderProgram->id, GetName() );
 	}
 
 	void SetBuffer( GLuint buffer ) {
-		shaderProgram_t *p = _shader->GetProgram();
+		ShaderProgramDescriptor *p = _shader->GetProgram();
 		GLuint blockIndex = p->uniformBlockIndexes[ _locationIndex ];
 
 		ASSERT_EQ(p, glState.currentProgram);
@@ -1640,8 +1686,15 @@ protected:
 	};
 
 public:
+	enum ShaderType {
+		VERTEX = BIT( 0 ),
+		FRAGMENT = BIT( 1 ),
+		COMPUTE = BIT( 2 )
+	};
+
 	virtual const char       *GetName() const = 0;
 	virtual EGLCompileMacro GetType() const = 0;
+	virtual int GetShaderTypes() const = 0;
 
 	virtual bool            HasConflictingMacros( size_t, const std::vector<GLCompileMacro*>& ) const
 	{
@@ -1703,6 +1756,10 @@ public:
 		return EGLCompileMacro::USE_BSP_SURFACE;
 	}
 
+	int GetShaderTypes() const override {
+		return ShaderType::VERTEX | ShaderType::FRAGMENT;
+	}
+
 	void SetBspSurface( bool enable )
 	{
 		SetMacro( enable );
@@ -1726,6 +1783,10 @@ public:
 	EGLCompileMacro GetType() const override
 	{
 		return EGLCompileMacro::USE_VERTEX_SKINNING;
+	}
+
+	int GetShaderTypes() const override {
+		return ShaderType::VERTEX;
 	}
 
 	bool HasConflictingMacros( size_t permutation, const std::vector< GLCompileMacro * > &macros ) const override;
@@ -1761,6 +1822,10 @@ public:
 		return EGLCompileMacro::USE_VERTEX_ANIMATION;
 	}
 
+	int GetShaderTypes() const override {
+		return ShaderType::VERTEX;
+	}
+
 	bool     HasConflictingMacros( size_t permutation, const std::vector< GLCompileMacro * > &macros ) const override;
 	uint32_t GetRequiredVertexAttributes() const override;
 
@@ -1787,6 +1852,10 @@ public:
 	EGLCompileMacro GetType() const override
 	{
 		return EGLCompileMacro::USE_TCGEN_ENVIRONMENT;
+	}
+
+	int GetShaderTypes() const override {
+		return ShaderType::VERTEX;
 	}
 
 	bool     HasConflictingMacros(size_t permutation, const std::vector< GLCompileMacro * > &macros) const override;
@@ -1821,6 +1890,10 @@ public:
 		return EGLCompileMacro::USE_TCGEN_LIGHTMAP;
 	}
 
+	int GetShaderTypes() const override {
+		return ShaderType::VERTEX;
+	}
+
 	void SetTCGenLightmap( bool enable )
 	{
 		SetMacro( enable );
@@ -1846,6 +1919,10 @@ public:
 	EGLCompileMacro GetType() const override
 	{
 		return EGLCompileMacro::USE_GRID_LIGHTING;
+	}
+
+	int GetShaderTypes() const override {
+		return ShaderType::VERTEX | ShaderType::FRAGMENT;
 	}
 
 	void SetGridLighting( bool enable )
@@ -1875,6 +1952,10 @@ public:
 		return EGLCompileMacro::USE_DELUXE_MAPPING;
 	}
 
+	int GetShaderTypes() const override {
+		return ShaderType::VERTEX | ShaderType::FRAGMENT;
+	}
+
 	void SetDeluxeMapping( bool enable )
 	{
 		SetMacro( enable );
@@ -1902,6 +1983,10 @@ public:
 		return EGLCompileMacro::USE_GRID_DELUXE_MAPPING;
 	}
 
+	int GetShaderTypes() const override {
+		return ShaderType::FRAGMENT;
+	}
+
 	void SetGridDeluxeMapping( bool enable )
 	{
 		SetMacro( enable );
@@ -1927,6 +2012,10 @@ public:
 		return EGLCompileMacro::USE_HEIGHTMAP_IN_NORMALMAP;
 	}
 
+	int GetShaderTypes() const override {
+		return ShaderType::FRAGMENT;
+	}
+
 	void SetHeightMapInNormalMap( bool enable )
 	{
 		SetMacro( enable );
@@ -1950,6 +2039,10 @@ public:
 	EGLCompileMacro GetType() const override
 	{
 		return EGLCompileMacro::USE_RELIEF_MAPPING;
+	}
+
+	int GetShaderTypes() const override {
+		return ShaderType::FRAGMENT;
 	}
 
 	void SetReliefMapping( bool enable )
@@ -1979,6 +2072,10 @@ public:
 		return EGLCompileMacro::USE_REFLECTIVE_SPECULAR;
 	}
 
+	int GetShaderTypes() const override {
+		return ShaderType::FRAGMENT;
+	}
+
 	void SetReflectiveSpecular( bool enable )
 	{
 		SetMacro( enable );
@@ -2002,6 +2099,10 @@ public:
 	EGLCompileMacro GetType() const override
 	{
 		return EGLCompileMacro::LIGHT_DIRECTIONAL;
+	}
+
+	int GetShaderTypes() const override {
+		return ShaderType::VERTEX | ShaderType::FRAGMENT;
 	}
 
 	void SetMacro_LIGHT_DIRECTIONAL( bool enable )
@@ -2029,6 +2130,10 @@ public:
 		return EGLCompileMacro::USE_SHADOWING;
 	}
 
+	int GetShaderTypes() const override {
+		return ShaderType::FRAGMENT;
+	}
+
 	void SetShadowing( bool enable )
 	{
 		SetMacro( enable );
@@ -2054,6 +2159,10 @@ public:
 		return EGLCompileMacro::USE_DEPTH_FADE;
 	}
 
+	int GetShaderTypes() const override {
+		return ShaderType::VERTEX | ShaderType::FRAGMENT;
+	}
+
 	void SetDepthFade( bool enable )
 	{
 		SetMacro( enable );
@@ -2077,6 +2186,10 @@ public:
 	EGLCompileMacro GetType() const override
 	{
 		return USE_PHYSICAL_MAPPING;
+	}
+
+	int GetShaderTypes() const override {
+		return ShaderType::FRAGMENT;
 	}
 
 	void SetPhysicalShading( bool enable )
@@ -3958,7 +4071,7 @@ class GLShader_generic :
 {
 public:
 	GLShader_generic( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_genericMaterial :
@@ -3984,7 +4097,7 @@ class GLShader_genericMaterial :
 	public GLCompileMacro_USE_DEPTH_FADE {
 	public:
 	GLShader_genericMaterial( GLShaderManager* manager );
-	void SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor* shaderProgram ) override;
 };
 
 class GLShader_lightMapping :
@@ -4035,7 +4148,7 @@ class GLShader_lightMapping :
 {
 public:
 	GLShader_lightMapping( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_lightMappingMaterial :
@@ -4083,7 +4196,7 @@ class GLShader_lightMappingMaterial :
 	public GLCompileMacro_USE_PHYSICAL_MAPPING {
 	public:
 	GLShader_lightMappingMaterial( GLShaderManager* manager );
-	void SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor* shaderProgram ) override;
 };
 
 class GLShader_forwardLighting_omniXYZ :
@@ -4126,7 +4239,7 @@ class GLShader_forwardLighting_omniXYZ :
 {
 public:
 	GLShader_forwardLighting_omniXYZ( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_forwardLighting_projXYZ :
@@ -4171,7 +4284,7 @@ class GLShader_forwardLighting_projXYZ :
 public:
 	GLShader_forwardLighting_projXYZ( GLShaderManager *manager );
 	void BuildShaderCompileMacros( std::string& compileMacros ) override;
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_forwardLighting_directionalSun :
@@ -4223,7 +4336,7 @@ class GLShader_forwardLighting_directionalSun :
 public:
 	GLShader_forwardLighting_directionalSun( GLShaderManager *manager );
 	void BuildShaderCompileMacros( std::string& compileMacros ) override;
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_shadowFill :
@@ -4245,7 +4358,7 @@ class GLShader_shadowFill :
 {
 public:
 	GLShader_shadowFill( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_reflection :
@@ -4271,7 +4384,7 @@ class GLShader_reflection :
 {
 public:
 	GLShader_reflection( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_reflectionMaterial :
@@ -4292,7 +4405,7 @@ class GLShader_reflectionMaterial :
 	public GLCompileMacro_USE_RELIEF_MAPPING {
 	public:
 	GLShader_reflectionMaterial( GLShaderManager* manager );
-	void SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor* shaderProgram ) override;
 };
 
 class GLShader_skybox :
@@ -4307,7 +4420,7 @@ class GLShader_skybox :
 {
 public:
 	GLShader_skybox( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_skyboxMaterial :
@@ -4321,7 +4434,7 @@ class GLShader_skyboxMaterial :
 	public u_ModelViewProjectionMatrix {
 	public:
 	GLShader_skyboxMaterial( GLShaderManager* manager );
-	void SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor* shaderProgram ) override;
 };
 
 class GLShader_fogQuake3 :
@@ -4341,7 +4454,7 @@ class GLShader_fogQuake3 :
 {
 public:
 	GLShader_fogQuake3( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_fogQuake3Material :
@@ -4356,7 +4469,7 @@ class GLShader_fogQuake3Material :
 	public GLDeformStage {
 	public:
 	GLShader_fogQuake3Material( GLShaderManager* manager );
-	void SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor* shaderProgram ) override;
 };
 
 class GLShader_fogGlobal :
@@ -4370,7 +4483,7 @@ class GLShader_fogGlobal :
 {
 public:
 	GLShader_fogGlobal( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_heatHaze :
@@ -4392,7 +4505,7 @@ class GLShader_heatHaze :
 {
 public:
 	GLShader_heatHaze( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_heatHazeMaterial :
@@ -4411,7 +4524,7 @@ class GLShader_heatHazeMaterial :
 {
 public:
 	GLShader_heatHazeMaterial( GLShaderManager* manager );
-	void SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor* shaderProgram ) override;
 };
 
 class GLShader_screen :
@@ -4421,7 +4534,7 @@ class GLShader_screen :
 {
 public:
 	GLShader_screen( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_screenMaterial :
@@ -4430,7 +4543,7 @@ class GLShader_screenMaterial :
 	public u_ModelViewProjectionMatrix {
 	public:
 	GLShader_screenMaterial( GLShaderManager* manager );
-	void SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor* shaderProgram ) override;
 };
 
 class GLShader_portal :
@@ -4442,7 +4555,7 @@ class GLShader_portal :
 {
 public:
 	GLShader_portal( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_contrast :
@@ -4452,7 +4565,7 @@ class GLShader_contrast :
 {
 public:
 	GLShader_contrast( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_cameraEffects :
@@ -4469,7 +4582,7 @@ class GLShader_cameraEffects :
 {
 public:
 	GLShader_cameraEffects( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_blur :
@@ -4482,7 +4595,7 @@ class GLShader_blur :
 {
 public:
 	GLShader_blur( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_debugShadowMap :
@@ -4492,7 +4605,7 @@ class GLShader_debugShadowMap :
 {
 public:
 	GLShader_debugShadowMap( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_liquid :
@@ -4528,7 +4641,7 @@ class GLShader_liquid :
 {
 public:
 	GLShader_liquid( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_liquidMaterial :
@@ -4564,7 +4677,7 @@ class GLShader_liquidMaterial :
 	public GLCompileMacro_USE_RELIEF_MAPPING {
 	public:
 	GLShader_liquidMaterial( GLShaderManager* manager );
-	void SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor* shaderProgram ) override;
 };
 
 class GLShader_motionblur :
@@ -4576,7 +4689,7 @@ class GLShader_motionblur :
 {
 public:
 	GLShader_motionblur( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_ssao :
@@ -4588,7 +4701,7 @@ class GLShader_ssao :
 {
 public:
 	GLShader_ssao( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_depthtile1 :
@@ -4599,7 +4712,7 @@ class GLShader_depthtile1 :
 {
 public:
 	GLShader_depthtile1( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_depthtile2 :
@@ -4609,7 +4722,7 @@ class GLShader_depthtile2 :
 {
 public:
 	GLShader_depthtile2( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_lighttile :
@@ -4623,7 +4736,7 @@ class GLShader_lighttile :
 {
 public:
 	GLShader_lighttile( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_fxaa :
@@ -4633,7 +4746,7 @@ class GLShader_fxaa :
 {
 public:
 	GLShader_fxaa( GLShaderManager *manager );
-	void SetShaderProgramUniforms( shaderProgram_t *shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram ) override;
 };
 
 class GLShader_cull :
@@ -4664,7 +4777,7 @@ class GLShader_depthReduction :
 	public u_InitialDepthLevel {
 	public:
 	GLShader_depthReduction( GLShaderManager* manager );
-	void SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) override;
+	void SetShaderProgramUniforms( ShaderProgramDescriptor* shaderProgram ) override;
 };
 
 class GLShader_clearSurfaces :

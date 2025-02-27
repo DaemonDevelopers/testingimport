@@ -55,9 +55,9 @@ void DeformVertex( inout vec4 pos,
 		   inout vec3 normal,
 		   inout vec2 st,
 		   inout vec4 color,
-		   in    float time);
+		   in    float time );
 
-void	main()
+void main()
 {
 	#insert material_vp
 
@@ -72,11 +72,7 @@ void	main()
 	color = color * ColorModulateToColor( u_ColorModulateColorGen, lightFactor )
 		+ unpackUnorm4x8( u_Color ) * vec4( lightFactor, lightFactor, lightFactor, 1.0 );
 
-	DeformVertex( position,
-		      LB.normal,
-		      texCoord,
-		      color,
-		      u_Time);
+	DeformVertex( position, LB.normal, texCoord, color, u_Time );
 
 	// transform vertex position into homogenous clip-space
 	gl_Position = u_ModelViewProjectionMatrix * position;

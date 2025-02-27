@@ -5081,6 +5081,7 @@ void RE_LoadWorldMap( const char *name )
 
 	Q_strncpyz( s_worldData.baseName, COM_SkipPath( s_worldData.name ), sizeof( s_worldData.name ) );
 	COM_StripExtension3( s_worldData.baseName, s_worldData.baseName, sizeof( s_worldData.baseName ) );
+	tr.loadingMap = s_worldData.baseName;
 
 	startMarker = (byte*) ri.Hunk_Alloc( 0, ha_pref::h_low );
 
@@ -5239,6 +5240,7 @@ void RE_LoadWorldMap( const char *name )
 	}
 
 	tr.worldLoaded = true;
+	tr.loadingMap = "";
 	GLSL_InitWorldShaders();
 
 	if ( glConfig2.reflectionMappingAvailable ) {

@@ -120,7 +120,7 @@ GLuint64 BindAnimatedImage( int unit, const textureBundle_t *bundle )
 	return GL_BindToTMU( unit, bundle->image[ index ] );
 }
 
-void GL_BindProgram( shaderProgram_t *program )
+void GL_BindProgram( ShaderProgramDescriptor* program )
 {
 	if ( !program )
 	{
@@ -130,7 +130,7 @@ void GL_BindProgram( shaderProgram_t *program )
 
 	if ( glState.currentProgram != program )
 	{
-		glUseProgram( program->program );
+		glUseProgram( program->id );
 		glState.currentProgram = program;
 	}
 }
@@ -1378,7 +1378,7 @@ static void RB_SetupLightForShadowing( trRefLight_t *light, int index,
 				       bool shadowClip )
 {
 	// HACK: bring OpenGL into a safe state or strange FBO update problems will occur
-	GL_BindProgram( nullptr );
+	GL_BindNullProgram();
 	GL_State( GLS_DEFAULT );
 
 	GL_Bind( tr.whiteImage );
