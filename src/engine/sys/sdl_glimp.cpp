@@ -2051,7 +2051,6 @@ static void GLimp_InitExtensions()
 
 	logger.Notice("...using shading language version %i", glConfig2.shadingLanguageVersion );
 
-
 	// OpenGL driver constants.
 
 	glGetIntegerv( GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &glConfig2.maxTextureUnits );
@@ -2522,8 +2521,16 @@ static void GLimp_InitExtensions()
 		glConfig2.bindlessTexturesAvailable = LOAD_EXTENSION_WITH_TEST( ExtFlag_NONE, ARB_bindless_texture, bindlessTextureEnabled );
 	}
 
+
+	bool ShaderDrawParameterEnabled = true;
+	if ( glConfig2.shadingLanguageVersion <= 120 )
+	{
+		logger.Warn( "Found GLSL 1.20, disabling ARB_shader_draw_parameters." );
+		ShaderDrawParameterEnabled = false;
+	}
+
 	// made required in OpenGL 4.6
-	glConfig2.shaderDrawParametersAvailable = LOAD_EXTENSION_WITH_TEST( ExtFlag_NONE, ARB_shader_draw_parameters, r_arb_shader_draw_parameters.Get() );
+	glConfig2.shaderDrawParametersAvailable = LOAD_EXTENSION_WITH_TEST( ExtFlag_NONE, ARB_shader_draw_parameters, r_arb_shader_draw_parameters.Get() && ShaderDrawParameterEnabled );
 
 	// made required in OpenGL 4.3
 	glConfig2.SSBOAvailable = LOAD_EXTENSION_WITH_TEST( ExtFlag_NONE, ARB_shader_storage_buffer_object, r_arb_shader_storage_buffer_object.Get() );
