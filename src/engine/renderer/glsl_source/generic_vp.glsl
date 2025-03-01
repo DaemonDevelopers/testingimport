@@ -36,8 +36,8 @@ uniform vec3		u_ViewOrigin;
 
 uniform float		u_Time;
 
-uniform uint u_ColorModulateColorGen;
-uniform uint u_Color;
+uniform int u_ColorModulateColorGen;
+uniform int u_Color;
 #if defined(USE_TCGEN_ENVIRONMENT)
 uniform mat4		u_ModelMatrix;
 #endif
@@ -70,7 +70,7 @@ void	main()
 	float lightFactor = ColorModulateToLightFactor( u_ColorModulateColorGen );
 	color.a = ColorModulateToVertexColor( u_ColorModulateColorGen ) ? 1.0 : color.a;
 	color = color * ColorModulateToColor( u_ColorModulateColorGen, lightFactor )
-		+ unpackUnorm4x8( u_Color ) * vec4( lightFactor, lightFactor, lightFactor, 1.0 );
+		+ UnpackColor( u_Color ) * vec4( lightFactor, lightFactor, lightFactor, 1.0 );
 
 	DeformVertex( position,
 		      LB.normal,

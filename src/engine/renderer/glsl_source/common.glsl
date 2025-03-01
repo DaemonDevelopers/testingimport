@@ -43,33 +43,96 @@ array must be in the form of uvec4 array[] */
 #define UINT_FROM_UVEC4_ARRAY( array, id ) ( ( array )[( id ) / 4][( id ) % 4] )
 #define UVEC2_FROM_UVEC4_ARRAY( array, id ) ( ( id ) % 2 == 0 ? ( array )[( id ) / 2].xy : ( array )[( id ) / 2].zw )
 
+// Common functions
+
+vec4 UnpackColor( const in int color )
+{
+#if defined(HAVE_EXT_gpu_shader4)
+	return unpackUnorm4x8( color );
+#else
+	int v = color, m = 0;
+
+	if ( v < 0 )
+	{
+		v = 2147483647 - abs( v ) + 1;
+		m = 128;
+	}
+
+	int a = v / 16777216;
+	v -= a * 16777216;
+	int b = v / 65536;
+	v -= b * 65536;
+	int g = v / 256;
+	v -= g * 256;
+	int r = v;
+	a = a + m;
+
+	return vec4( r, g, b, a ) / 255;
+#endif
+}
+
 /* Bit 0: color * 1
 Bit 1: color * ( -1 )
 Bit 2: color += lightFactor
 Bit 3: alpha * 1
 Bit 4: alpha * ( -1 )
 Bit 5: alpha = 1
-Bit 6-9: lightFactor */
+Bit 6-9: lightFactor
+All bits after lightFactor should be left zeroed. */
 
 float colorModArray[3] = float[3] ( 0.0f, 1.0f, -1.0f );
 
-vec4 ColorModulateToColor( const in uint colorMod ) {
-	vec4 colorModulate = vec4( colorModArray[colorMod & 3] );
-	colorModulate.a = ( colorModArray[( colorMod & 24 ) >> 3] );
+vec4 ColorModulateToColor( const in int colorMod ) {
+#if defined(HAVE_EXT_gpu_shader4)
+	int rgbIndex = colorMod & 3;
+	int alphaIndex = ( colorMod & 24 ) >> 3;
+#else
+	int rgbBit0 = colorMod % 2;
+	int rgbBit1 = ( colorMod / 2 ) % 2;
+	int alphaBit0 = ( colorMod / 8 ) % 2;
+	int alphaBit1 = ( colorMod / 16 ) % 2;
+	int rgbIndex = rgbBit0 + ( rgbBit1 * 2 );
+	int alphaIndex = alphaBit0 + ( alphaBit1 * 2 );
+#endif
+
+	vec4 colorModulate = vec4( colorModArray[ rgbIndex ] );
+	colorModulate.a = colorModArray[ alphaIndex ];
 	return colorModulate;
 }
 
-vec4 ColorModulateToColor( const in uint colorMod, const in float lightFactor ) {
-	vec4 colorModulate = vec4( colorModArray[colorMod & 3] + ( ( colorMod & 4 ) >> 2 ) * lightFactor );
-	colorModulate.a = ( colorModArray[( colorMod & 24 ) >> 3] );
+vec4 ColorModulateToColor( const in int colorMod, const in float lightFactor ) {
+#if defined(HAVE_EXT_gpu_shader4)
+	int rgbIndex = colorMod & 3;
+	int alphaIndex = ( colorMod & 24 ) >> 3;
+	int hasLight = ( colorMod & 4 ) >> 2;
+#else
+	int rgbBit0 = colorMod % 2;
+	int rgbBit1 = ( colorMod / 2 ) % 2;
+	int hasLight = ( colorMod / 4 ) % 2;
+	int alphaBit0 = ( colorMod / 8 ) % 2;
+	int alphaBit1 = ( colorMod / 16 ) % 2;
+	int rgbIndex = rgbBit0 + ( rgbBit1 * 2 );
+	int alphaIndex = alphaBit0 + ( alphaBit1 * 2 );
+#endif
+
+	vec4 colorModulate = vec4( colorModArray[ rgbIndex ] + ( hasLight * lightFactor ) );
+	colorModulate.a = colorModArray[ alphaIndex ];
 	return colorModulate;
 }
 
-float ColorModulateToLightFactor( const in uint colorMod ) {
+float ColorModulateToLightFactor( const in int colorMod ) {
+#if defined(HAVE_EXT_gpu_shader4)
 	return float( ( colorMod >> 6 ) & 0xF );
+#else
+	return float( colorMod / 64 );
+#endif
 }
 
 // This is used to skip vertex colours if the colorMod doesn't need them
-bool ColorModulateToVertexColor( const in uint colorMod ) {
+bool ColorModulateToVertexColor( const in int colorMod ) {
+#if defined(HAVE_EXT_gpu_shader4)
 	return ( colorMod & 32 ) == 32;
+#else
+	return ( colorMod / 32 ) % 2 == 1;
+#endif
 }
