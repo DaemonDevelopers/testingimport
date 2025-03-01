@@ -22,13 +22,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 /* fogQuake3_vp.glsl */
 
+#insert common
 #insert vertexSimple_vp
 #insert vertexSkinning_vp
 #insert vertexAnimation_vp
 
 uniform float		u_Time;
 
-uniform uint u_ColorGlobal;
+uniform vec4 u_ColorGlobal;
+
 uniform mat4		u_ModelMatrix;
 uniform mat4		u_ModelViewProjectionMatrix;
 
@@ -57,7 +59,7 @@ void	main()
 
 	VertexFetch( position, LB, color, texCoord, lmCoord );
 
-	color = unpackUnorm4x8( u_ColorGlobal );
+	color = UnpackColor( u_ColorGlobal );
 
 	DeformVertex( position,
 		      LB.normal,

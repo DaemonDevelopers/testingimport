@@ -3042,11 +3042,26 @@ class u_CloudHeight :
 	}
 };
 
-class u_Color :
+class u_Color_Float :
+	GLUniform4f
+{
+public:
+	u_Color_Float( GLShader *shader ) :
+		GLUniform4f( shader, "u_Color" )
+	{
+	}
+
+	void SetUniform_Color( const Color::Color& color )
+	{
+		this->SetValue( color.ToArray() );
+	}
+};
+
+class u_Color_Uint :
 	GLUniform1ui
 {
 public:
-	u_Color( GLShader *shader ) :
+	u_Color_Uint( GLShader *shader ) :
 		GLUniform1ui( shader, "u_Color" )
 	{
 	}
@@ -3057,10 +3072,25 @@ public:
 	}
 };
 
-class u_ColorGlobal :
+class u_ColorGlobal_Float :
+	GLUniform4f
+{
+public:
+	u_ColorGlobal_Float( GLShader *shader ) :
+		GLUniform4f( shader, "u_ColorGlobal", true )
+	{
+	}
+
+	void SetUniform_ColorGlobal( const Color::Color& color )
+	{
+		this->SetValue( color.ToArray() );
+	}
+};
+
+class u_ColorGlobal_Uint :
 	GLUniform1ui {
 	public:
-	u_ColorGlobal( GLShader* shader ) :
+	u_ColorGlobal_Uint( GLShader* shader ) :
 		GLUniform1ui( shader, "u_ColorGlobal", true ) {
 	}
 
@@ -3561,87 +3591,168 @@ public:
 	}
 };
 
-enum class ColorModulate {
-	COLOR_ONE = BIT( 0 ),
-	COLOR_MINUS_ONE = BIT( 1 ),
-	COLOR_LIGHTFACTOR = BIT( 2 ),
-	ALPHA_ONE = BIT( 3 ),
-	ALPHA_MINUS_ONE = BIT( 4 ),
-	ALPHA_ADD_ONE = BIT( 5 )
+struct colorModulation_t {
+	float colorGen = 0.0f;
+	float alphaGen = 0.0f;
+	float lightFactor = 1.0f;
+	bool isLightStyle = false;
+	bool alphaAddOne = true;
 };
 
-class u_ColorModulateColorGen :
-	GLUniform1ui {
-	public:
-	u_ColorModulateColorGen( GLShader* shader ) :
-		GLUniform1ui( shader, "u_ColorModulateColorGen" ) {
+static colorModulation_t ColorModulateColorGen(
+	const colorGen_t colorGen,
+	const alphaGen_t alphaGen,
+	const bool vertexOverbright,
+	const bool useMapLightFactor )
+{
+	colorModulation_t colorModulation = {};
+
+	switch ( colorGen )
+	{
+		case colorGen_t::CGEN_VERTEX:
+			colorModulation.alphaAddOne = false;;
+
+			if ( vertexOverbright )
+			{
+				// vertexOverbright is only needed for non-lightmapped cases. When there is a
+				// lightmap, this is done by multiplying with the overbright-scaled white image
+				colorModulation.isLightStyle = true;
+				colorModulation.lightFactor = tr.mapLightFactor;
+			}
+			else
+			{
+				colorModulation.colorGen = 1.0f;
+			}
+			break;
+
+		case colorGen_t::CGEN_ONE_MINUS_VERTEX:
+			colorModulation.alphaAddOne = false;;
+			colorModulation.colorGen = -1.0f;
+			break;
+
+		default:
+			break;
 	}
 
-	void SetUniform_ColorModulateColorGen( colorGen_t colorGen, alphaGen_t alphaGen, bool vertexOverbright = false,
-		const bool useMapLightFactor = false ) {
-		uint32_t colorModulate = 0;
-		bool needAttrib = false;
+	if ( useMapLightFactor )
+	{
+		ASSERT_EQ( vertexOverbright, false );
+		colorModulation.lightFactor = tr.mapLightFactor;
+	}
 
+	switch ( alphaGen )
+	{
+		case alphaGen_t::AGEN_VERTEX:
+			colorModulation.alphaAddOne = false;;
+			colorModulation.alphaGen = 1.0f;
+			break;
+
+		case alphaGen_t::AGEN_ONE_MINUS_VERTEX:
+			colorModulation.alphaAddOne = false;;
+			colorModulation.alphaGen = -1.0f;
+			break;
+
+		default:
+			break;
+	}
+
+	return colorModulation;
+}
+
+class u_ColorModulateColorGen_Float :
+	GLUniform4f
+{
+public:
+	u_ColorModulateColorGen_Float( GLShader* shader ) :
+		GLUniform4f( shader, "u_ColorModulateColorGen" )
+	{
+	}
+
+	void SetUniform_ColorModulateColorGen(
+		const colorGen_t colorGen,
+		const alphaGen_t alphaGen,
+		const bool vertexOverbright = false,
+		const bool useMapLightFactor = false )
+	{
 		if ( r_logFile->integer ) {
 			GLimp_LogComment(
-				va( "--- u_ColorModulate::SetUniform_ColorModulateColorGen( program = %s, colorGen = %s, alphaGen = %s ) ---\n",
+				va( "--- u_ColorModulate::SetUniform_ColorModulateColorGen_Float( "
+					"program = %s, colorGen = %s, alphaGen = %s ) ---\n",
 					_shader->GetName().c_str(), Util::enum_str( colorGen ), Util::enum_str( alphaGen ) )
 			);
 		}
 
-		uint32_t lightFactor = 0;
-		switch ( colorGen ) {
-			case colorGen_t::CGEN_VERTEX:
-				needAttrib = true;
-				if ( vertexOverbright ) {
-					// vertexOverbright is only needed for non-lightmapped cases. When there is a
-					// lightmap, this is done by multiplying with the overbright-scaled white image
-					colorModulate |= Util::ordinal( ColorModulate::COLOR_LIGHTFACTOR );
-					lightFactor = uint32_t( tr.mapLightFactor ) << 6;
-				} else {
-					colorModulate |= Util::ordinal( ColorModulate::COLOR_ONE );
-				}
-				break;
+		colorModulation_t colorModulation = ColorModulateColorGen(
+			colorGen, alphaGen, vertexOverbright, useMapLightFactor );
 
-			case colorGen_t::CGEN_ONE_MINUS_VERTEX:
-				needAttrib = true;
-				colorModulate |= Util::ordinal( ColorModulate::COLOR_MINUS_ONE );
-				break;
+		vec4_t colorModulate_Float;
+		colorModulate_Float[ 0 ] = colorModulation.colorGen;
+		colorModulate_Float[ 1 ] = colorModulation.lightFactor;
+		colorModulate_Float[ 1 ] *= colorModulation.isLightStyle ? -1.0f : 1.0f;
+		colorModulate_Float[ 2 ] = colorModulation.alphaAddOne;
+		colorModulate_Float[ 3 ] = colorModulation.alphaGen;
 
-			default:
-				break;
+		this->SetValue( colorModulate_Float );
+	}
+};
+
+class u_ColorModulateColorGen_Uint :
+	GLUniform1ui {
+	public:
+	u_ColorModulateColorGen_Uint( GLShader* shader ) :
+		GLUniform1ui( shader, "u_ColorModulateColorGen" ) {
+	}
+
+	void SetUniform_ColorModulateColorGen(
+		const colorGen_t colorGen,
+		const alphaGen_t alphaGen,
+		const bool vertexOverbright = false,
+		const bool useMapLightFactor = false )
+	{
+		if ( r_logFile->integer ) {
+			GLimp_LogComment(
+				va( "--- u_ColorModulate::SetUniform_ColorModulateColorGen_Uint( "
+					"program = %s, colorGen = %s, alphaGen = %s ) ---\n",
+					_shader->GetName().c_str(), Util::enum_str( colorGen ), Util::enum_str( alphaGen ) )
+			);
 		}
 
-		if ( useMapLightFactor ) {
-			ASSERT_EQ( vertexOverbright, false );
-			lightFactor = uint32_t( tr.mapLightFactor ) << 6;
-		}
+		colorModulation_t colorModulation = ColorModulateColorGen(
+			colorGen, alphaGen, vertexOverbright, useMapLightFactor );
 
-		colorModulate |= lightFactor ? lightFactor : 1 << 6;
+		enum class ColorModulate_Bit {
+			COLOR_ONE = 0,
+			COLOR_MINUS_ONE = 1,
+			ALPHA_ONE = 2,
+			ALPHA_MINUS_ONE = 3,
+			ALPHA_ADD_ONE = 4,
+			// <-- Insert new bits there.
+			IS_LIGHT_STYLE = 27,
+			LIGHTFACTOR_BIT0 = 28,
+			LIGHTFACTOR_BIT1 = 29,
+			LIGHTFACTOR_BIT2 = 30,
+			LIGHTFACTOR_BIT3 = 31,
+			// There should be not bit higher than the light factor.
+		};
 
-		switch ( alphaGen ) {
-			case alphaGen_t::AGEN_VERTEX:
-				needAttrib = true;
-				colorModulate |= Util::ordinal( ColorModulate::ALPHA_ONE );
-				break;
+		uint32_t colorModulate_Uint = 0;
 
-			case alphaGen_t::AGEN_ONE_MINUS_VERTEX:
-				needAttrib = true;
-				colorModulate |= Util::ordinal( ColorModulate::ALPHA_MINUS_ONE );
-				break;
+		colorModulate_Uint |= ( colorModulation.colorGen == 1.0f )
+			<< Util::ordinal( ColorModulate_Bit::COLOR_ONE );
+		colorModulate_Uint |= ( colorModulation.colorGen == -1.0f )
+			<< Util::ordinal( ColorModulate_Bit::COLOR_MINUS_ONE );
+		colorModulate_Uint |= ( colorModulation.alphaGen == 1.0f )
+			<< Util::ordinal( ColorModulate_Bit::ALPHA_ONE );
+		colorModulate_Uint |= ( colorModulation.alphaGen == -1.0f )
+			<< Util::ordinal( ColorModulate_Bit::ALPHA_MINUS_ONE );
+		colorModulate_Uint |= colorModulation.alphaAddOne
+			<< Util::ordinal( ColorModulate_Bit::ALPHA_ADD_ONE );
+		colorModulate_Uint |= colorModulation.isLightStyle
+			<< Util::ordinal( ColorModulate_Bit::IS_LIGHT_STYLE );
+		colorModulate_Uint |= uint32_t( colorModulation.lightFactor )
+			<< Util::ordinal( ColorModulate_Bit::LIGHTFACTOR_BIT0 );
 
-			default:
-				break;
-		}
-
-		if ( !needAttrib ) {
-			/* Originally, this controlled whether the vertex color array was used,
-			now it does the equivalent by setting the color in the shader in such way as if it was using
-			the default OpenGL values for the disabled arrays (0.0, 0.0, 0.0, 1.0)
-			This allows to skip the vertex format change */
-			colorModulate |= Util::ordinal( ColorModulate::ALPHA_ADD_ONE );
-		}
-		this->SetValue( colorModulate );
+		this->SetValue( colorModulate_Uint );
 	}
 };
 
@@ -3942,8 +4053,8 @@ class GLShader_generic :
 	public u_AlphaThreshold,
 	public u_ModelMatrix,
 	public u_ModelViewProjectionMatrix,
-	public u_ColorModulateColorGen,
-	public u_Color,
+	public u_ColorModulateColorGen_Float,
+	public u_Color_Float,
 	public u_Bones,
 	public u_VertexInterpolation,
 	public u_DepthScale,
@@ -3971,8 +4082,8 @@ class GLShader_genericMaterial :
 	public u_AlphaThreshold,
 	public u_ModelMatrix,
 	public u_ModelViewProjectionMatrix,
-	public u_ColorModulateColorGen,
-	public u_Color,
+	public u_ColorModulateColorGen_Uint,
+	public u_Color_Uint,
 	public u_DepthScale,
 	public u_ShowTris,
 	public u_MaterialColour,
@@ -4003,8 +4114,8 @@ class GLShader_lightMapping :
 	public u_LightTiles,
 	public u_TextureMatrix,
 	public u_SpecularExponent,
-	public u_ColorModulateColorGen,
-	public u_Color,
+	public u_ColorModulateColorGen_Float,
+	public u_Color_Float,
 	public u_AlphaThreshold,
 	public u_ViewOrigin,
 	public u_ModelMatrix,
@@ -4054,8 +4165,8 @@ class GLShader_lightMappingMaterial :
 	public u_LightTiles,
 	public u_TextureMatrix,
 	public u_SpecularExponent,
-	public u_ColorModulateColorGen,
-	public u_Color,
+	public u_ColorModulateColorGen_Uint,
+	public u_Color_Uint,
 	public u_AlphaThreshold,
 	public u_ViewOrigin,
 	public u_ModelMatrix,
@@ -4100,8 +4211,8 @@ class GLShader_forwardLighting_omniXYZ :
 	public u_TextureMatrix,
 	public u_SpecularExponent,
 	public u_AlphaThreshold,
-	public u_ColorModulateColorGen,
-	public u_Color,
+	public u_ColorModulateColorGen_Float,
+	public u_Color_Float,
 	public u_ViewOrigin,
 	public u_LightOrigin,
 	public u_LightColor,
@@ -4143,8 +4254,8 @@ class GLShader_forwardLighting_projXYZ :
 	public u_TextureMatrix,
 	public u_SpecularExponent,
 	public u_AlphaThreshold,
-	public u_ColorModulateColorGen,
-	public u_Color,
+	public u_ColorModulateColorGen_Float,
+	public u_Color_Float,
 	public u_ViewOrigin,
 	public u_LightOrigin,
 	public u_LightColor,
@@ -4193,8 +4304,8 @@ class GLShader_forwardLighting_directionalSun :
 	public u_TextureMatrix,
 	public u_SpecularExponent,
 	public u_AlphaThreshold,
-	public u_ColorModulateColorGen,
-	public u_Color,
+	public u_ColorModulateColorGen_Float,
+	public u_Color_Float,
 	public u_ViewOrigin,
 	public u_LightDir,
 	public u_LightColor,
@@ -4235,7 +4346,7 @@ class GLShader_shadowFill :
 	public u_LightRadius,
 	public u_ModelMatrix,
 	public u_ModelViewProjectionMatrix,
-	public u_Color,
+	public u_Color_Float,
 	public u_Bones,
 	public u_VertexInterpolation,
 	public GLDeformStage,
@@ -4329,7 +4440,7 @@ class GLShader_fogQuake3 :
 	public u_FogMap,
 	public u_ModelMatrix,
 	public u_ModelViewProjectionMatrix,
-	public u_ColorGlobal,
+	public u_ColorGlobal_Float,
 	public u_Bones,
 	public u_VertexInterpolation,
 	public u_FogDistanceVector,
@@ -4349,7 +4460,7 @@ class GLShader_fogQuake3Material :
 	public u_FogMap,
 	public u_ModelMatrix,
 	public u_ModelViewProjectionMatrix,
-	public u_ColorGlobal,
+	public u_ColorGlobal_Float,
 	public u_FogDistanceVector,
 	public u_FogDepthVector,
 	public u_FogEyeT,
@@ -4365,7 +4476,7 @@ class GLShader_fogGlobal :
 	public u_DepthMap,
 	public u_ModelViewProjectionMatrix,
 	public u_UnprojectMatrix,
-	public u_Color,
+	public u_Color_Float,
 	public u_FogDistanceVector
 {
 public:
