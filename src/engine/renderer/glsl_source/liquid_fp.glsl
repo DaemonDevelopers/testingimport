@@ -34,7 +34,7 @@ uniform sampler2D	u_DepthMap;
 
 uniform vec3		u_ViewOrigin;
 
-uniform uint u_ColorModulateColorGen;
+uniform int u_ColorModulateColorGen;
 
 uniform float		u_FogDensity;
 uniform vec3		u_FogColor;

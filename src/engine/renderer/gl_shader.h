@@ -3042,30 +3042,47 @@ class u_CloudHeight :
 	}
 };
 
+static int32_t packColors( const Color::Color& color )
+{
+	if ( glConfig2.gpuShader4Available )
+	{
+		/* HACK: Store uint32_t as int32_t to be compatible with GLSL 1.20,
+		the GLSL code will convert back to uint32_t. */
+		uint32_t uColor = packUnorm4x8( color.ToArray() );
+		int32_t iColor;
+		memcpy( &iColor, &uColor, sizeof( iColor ) );
+		return iColor;
+	}
+	else
+	{
+		return packUnorm4x4( color.ToArray() );
+	}
+}
+
 class u_Color :
-	GLUniform1ui
+	GLUniform1i
 {
 public:
 	u_Color( GLShader *shader ) :
-		GLUniform1ui( shader, "u_Color" )
+		GLUniform1i( shader, "u_Color" )
 	{
 	}
 
 	void SetUniform_Color( const Color::Color& color )
 	{
-		this->SetValue( packUnorm4x8( color.ToArray() ) );
+		this->SetValue( packColors( color ) );
 	}
 };
 
 class u_ColorGlobal :
-	GLUniform1ui {
+	GLUniform1i {
 	public:
 	u_ColorGlobal( GLShader* shader ) :
-		GLUniform1ui( shader, "u_ColorGlobal", true ) {
+		GLUniform1i( shader, "u_ColorGlobal", true ) {
 	}
 
 	void SetUniform_ColorGlobal( const Color::Color& color ) {
-		this->SetValue( packUnorm4x8( color.ToArray() ) );
+		this->SetValue( packColors( color ) );
 	}
 };
 
@@ -3571,10 +3588,10 @@ enum class ColorModulate {
 };
 
 class u_ColorModulateColorGen :
-	GLUniform1ui {
+	GLUniform1i {
 	public:
 	u_ColorModulateColorGen( GLShader* shader ) :
-		GLUniform1ui( shader, "u_ColorModulateColorGen" ) {
+		GLUniform1i( shader, "u_ColorModulateColorGen" ) {
 	}
 
 	void SetUniform_ColorModulateColorGen( colorGen_t colorGen, alphaGen_t alphaGen, bool vertexOverbright = false,
@@ -3597,7 +3614,7 @@ class u_ColorModulateColorGen :
 					// vertexOverbright is only needed for non-lightmapped cases. When there is a
 					// lightmap, this is done by multiplying with the overbright-scaled white image
 					colorModulate |= Util::ordinal( ColorModulate::COLOR_LIGHTFACTOR );
-					lightFactor = uint32_t( tr.mapLightFactor ) << 6;
+					lightFactor = uint32_t( tr.mapLightFactor ) << 13;
 				} else {
 					colorModulate |= Util::ordinal( ColorModulate::COLOR_ONE );
 				}
@@ -3614,10 +3631,10 @@ class u_ColorModulateColorGen :
 
 		if ( useMapLightFactor ) {
 			ASSERT_EQ( vertexOverbright, false );
-			lightFactor = uint32_t( tr.mapLightFactor ) << 6;
+			lightFactor = uint32_t( tr.mapLightFactor ) << 13;
 		}
 
-		colorModulate |= lightFactor ? lightFactor : 1 << 6;
+		colorModulate |= lightFactor ? lightFactor : 1 << 13;
 
 		switch ( alphaGen ) {
 			case alphaGen_t::AGEN_VERTEX:
@@ -3641,7 +3658,11 @@ class u_ColorModulateColorGen :
 			This allows to skip the vertex format change */
 			colorModulate |= Util::ordinal( ColorModulate::ALPHA_ADD_ONE );
 		}
-		this->SetValue( colorModulate );
+		/* HACK: Store uint32_t as int32_t to be compatible with GLSL 1.20,
+		the GLSL code will convert back to uint32_t. */
+		int32_t iColorModulate;
+		memcpy( &iColorModulate, &colorModulate, sizeof( iColorModulate ) );
+		this->SetValue( iColorModulate );
 	}
 };
 

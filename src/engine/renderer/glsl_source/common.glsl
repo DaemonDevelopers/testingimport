@@ -43,33 +43,101 @@ array must be in the form of uvec4 array[] */
 #define UINT_FROM_UVEC4_ARRAY( array, id ) ( ( array )[( id ) / 4][( id ) % 4] )
 #define UVEC2_FROM_UVEC4_ARRAY( array, id ) ( ( id ) % 2 == 0 ? ( array )[( id ) / 2].xy : ( array )[( id ) / 2].zw )
 
-/* Bit 0: color * 1
+// Common functions
+
+vec4 UnpackColor( const in int color )
+{
+#if defined(HAVE_EXT_gpu_shader4)
+	uint uColor = ( color & 0x7FFFFFFF ) | ( int( color < 0 ) << 31 );
+	return unpackUnorm4x8( uColor );
+#else
+	int v = color;
+
+	int a = v / 4096; v -= a * 4096;
+	int b = v / 256; v -= b * 256;
+	int g = v / 16; v -= g * 16;
+	int r = v;
+
+	return vec4( r, g, b, a ) / 15;
+#endif
+}
+
+vec4 UnpackColor( const in int color, const in float lightFactor )
+{
+	return UnpackColor( color ) * vec4( lightFactor, lightFactor, lightFactor, 1.0 );
+}
+
+/* colorMod format:
+
+Bit 0: color * 1
 Bit 1: color * ( -1 )
 Bit 2: color += lightFactor
 Bit 3: alpha * 1
 Bit 4: alpha * ( -1 )
 Bit 5: alpha = 1
-Bit 6-9: lightFactor */
+Bits 6-12: available for future usage
+Bits 13-16: lightFactor
+Bits 17-32: unusable as GLSL 1.20 int is 16-bit.
+
+int( colorMod < 0 ) can be used as a an emulated 17th bit
+since GLSL 1.20 stores the sign elsewhere. */
 
 float colorModArray[3] = float[3] ( 0.0f, 1.0f, -1.0f );
 
-vec4 ColorModulateToColor( const in uint colorMod ) {
-	vec4 colorModulate = vec4( colorModArray[colorMod & 3] );
-	colorModulate.a = ( colorModArray[( colorMod & 24 ) >> 3] );
+vec4 ColorModulateToColor( const in int colorMod ) {
+#if defined(HAVE_EXT_gpu_shader4)
+	int rgbIndex = colorMod & 3;
+	int alphaIndex = ( colorMod & 24 ) >> 3;
+#else
+	int rgbBit0 = int( mod( colorMod , 2 ) );
+	int rgbBit1 = int( mod( int( colorMod / 2 ), 2 ) );
+	int alphaBit0 = int( mod( int( colorMod / 8 ), 2 ) );
+	int alphaBit1 = int( mod( int( colorMod / 16 ), 2 ) );
+	int rgbIndex = rgbBit0 + ( rgbBit1 * 2 );
+	int alphaIndex = alphaBit0 + ( alphaBit1 * 2 );
+#endif
+
+	vec4 colorModulate = vec4( colorModArray[ rgbIndex ] );
+	colorModulate.a = colorModArray[ alphaIndex ];
 	return colorModulate;
 }
 
-vec4 ColorModulateToColor( const in uint colorMod, const in float lightFactor ) {
-	vec4 colorModulate = vec4( colorModArray[colorMod & 3] + ( ( colorMod & 4 ) >> 2 ) * lightFactor );
-	colorModulate.a = ( colorModArray[( colorMod & 24 ) >> 3] );
+vec4 ColorModulateToColor( const in int colorMod, const in float lightFactor ) {
+#if defined(HAVE_EXT_gpu_shader4)
+	int rgbIndex = colorMod & 3;
+	int alphaIndex = ( colorMod & 24 ) >> 3;
+	int hasLight = ( colorMod & 4 ) >> 2;
+#else
+	int rgbBit0 = int( mod( colorMod, 2 ) );
+	int rgbBit1 = int( mod( int( colorMod / 2 ), 2 ) );
+	int hasLight = int( mod( int( colorMod / 4 ), 2 ) );
+	int alphaBit0 = int( mod( int( colorMod / 8 ), 2 ) );
+	int alphaBit1 = int( mod( int( colorMod / 16 ), 2 ) );
+	int rgbIndex = rgbBit0 + ( rgbBit1 * 2 );
+	int alphaIndex = alphaBit0 + ( alphaBit1 * 2 );
+#endif
+
+	vec4 colorModulate = vec4( colorModArray[ rgbIndex ] + ( hasLight * lightFactor ) );
+	colorModulate.a = colorModArray[ alphaIndex ];
 	return colorModulate;
 }
 
-float ColorModulateToLightFactor( const in uint colorMod ) {
-	return float( ( colorMod >> 6 ) & 0xF );
+float ColorModulateToLightFactor( const in int colorMod ) {
+#if defined(HAVE_EXT_gpu_shader4)
+	/* The day the 17th bit or higher bit (and maybe sign?) is used,
+	this should be done instead:
+	return float( ( colorMod >> 13 ) & 0xF ); */
+	return float( colorMod >> 13 );
+#else
+	return float( colorMod / 8192 );
+#endif
 }
 
 // This is used to skip vertex colours if the colorMod doesn't need them
-bool ColorModulateToVertexColor( const in uint colorMod ) {
+bool ColorModulateToVertexColor( const in int colorMod ) {
+#if defined(HAVE_EXT_gpu_shader4)
 	return ( colorMod & 32 ) == 32;
+#else
+	return int( mod( int( colorMod / 32 ), 2 ) ) == 1;
+#endif
 }
