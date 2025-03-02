@@ -89,10 +89,10 @@ vec4 ColorModulateToColor( const in int colorMod ) {
 	int rgbIndex = colorMod & 3;
 	int alphaIndex = ( colorMod & 24 ) >> 3;
 #else
-	int rgbBit0 = colorMod % 2;
-	int rgbBit1 = ( colorMod / 2 ) % 2;
-	int alphaBit0 = ( colorMod / 8 ) % 2;
-	int alphaBit1 = ( colorMod / 16 ) % 2;
+	int rgbBit0 = int( mod( colorMod , 2 ) );
+	int rgbBit1 = int( mod( int( colorMod / 2 ), 2 ) );
+	int alphaBit0 = int( mod( int( colorMod / 8 ), 2 ) );
+	int alphaBit1 = int( mod( int( colorMod / 16 ), 2 ) );
 	int rgbIndex = rgbBit0 + ( rgbBit1 * 2 );
 	int alphaIndex = alphaBit0 + ( alphaBit1 * 2 );
 #endif
@@ -108,11 +108,11 @@ vec4 ColorModulateToColor( const in int colorMod, const in float lightFactor ) {
 	int alphaIndex = ( colorMod & 24 ) >> 3;
 	int hasLight = ( colorMod & 4 ) >> 2;
 #else
-	int rgbBit0 = colorMod % 2;
-	int rgbBit1 = ( colorMod / 2 ) % 2;
-	int hasLight = ( colorMod / 4 ) % 2;
-	int alphaBit0 = ( colorMod / 8 ) % 2;
-	int alphaBit1 = ( colorMod / 16 ) % 2;
+	int rgbBit0 = int( mod( colorMod, 2 ) );
+	int rgbBit1 = int( mod( int( colorMod / 2 ), 2 ) );
+	int hasLight = int( mod( int( colorMod / 4 ), 2 ) );
+	int alphaBit0 = int( mod( int( colorMod / 8 ), 2 ) );
+	int alphaBit1 = int( mod( int( colorMod / 16 ), 2 ) );
 	int rgbIndex = rgbBit0 + ( rgbBit1 * 2 );
 	int alphaIndex = alphaBit0 + ( alphaBit1 * 2 );
 #endif
@@ -142,6 +142,6 @@ bool ColorModulateToVertexColor( const in int colorMod ) {
 #if defined(HAVE_EXT_gpu_shader4)
 	return ( colorMod & 32 ) == 32;
 #else
-	return ( colorMod / 32 ) % 2 == 1;
+	return int( mod( int( colorMod / 32 ), 2 ) ) == 1;
 #endif
 }
