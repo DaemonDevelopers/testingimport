@@ -420,9 +420,13 @@ else()
 	# Saigo NaCl compiler doesn't support LTO, the flag is accepted but linking fails
 	# with “unable to pass LLVM bit-code files to linker” error.
 	if (USE_LTO AND NOT NACL)
-		try_c_cxx_flag(LTO "-flto")
+		try_c_cxx_flag(LTO_AUTO "-flto=auto")
 
-		if (FLAG_LTO)
+		if (NOT FLAG_LTO_AUTO)
+			try_c_cxx_flag(LTO "-flto")
+		endif()
+
+		if (FLAG_LTO_AUTO OR FLAG_LTO)
 			# Pass all compile flags to the linker.
 			set_linker_flag("${CMAKE_CXX_FLAGS}")
 
