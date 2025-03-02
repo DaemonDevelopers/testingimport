@@ -3440,6 +3440,12 @@ static void R_LoadSurfaces( lump_t *surfs, lump_t *verts, lump_t *indexLump )
 			case mapSurfaceType_t::MST_FLARE:
 				Log::Warn( "Surface type not supported: MST_FLARE; firstIndex: %i, numIndexes: %i, shaderNum: %i",
 					in->firstIndex, in->numIndexes, in->shaderNum );
+
+				// We still have to set these because other code will be checking them
+				out->data = ( surfaceType_t* ) ri.Hunk_Alloc( sizeof( surfaceType_t ), ha_pref::h_low );
+				*out->data = surfaceType_t::SF_BAD;
+				out->shader = tr.defaultShader;
+
 				numFlares++;
 				break;
 

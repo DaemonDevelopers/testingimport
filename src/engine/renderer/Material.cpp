@@ -1604,9 +1604,11 @@ void MaterialSystem::UpdateDynamicSurfaces() {
 
 void MaterialSystem::UpdateFrameData() {
 	atomicCommandCountersBuffer.BindBufferBase( GL_SHADER_STORAGE_BUFFER, Util::ordinal( BufferBind::COMMAND_COUNTERS_STORAGE ) );
+
 	gl_clearSurfacesShader->BindProgram( 0 );
 	gl_clearSurfacesShader->SetUniform_Frame( nextFrame );
 	gl_clearSurfacesShader->DispatchCompute( MAX_VIEWS, 1, 1 );
+
 	atomicCommandCountersBuffer.UnBindBufferBase( GL_SHADER_STORAGE_BUFFER, Util::ordinal( BufferBind::COMMAND_COUNTERS_STORAGE ) );
 
 	GL_CheckErrors();
@@ -1774,11 +1776,8 @@ void MaterialSystem::StartFrame() {
 	if ( !generatedWorldCommandBuffer ) {
 		return;
 	}
+	
 	frames[nextFrame].viewCount = 0;
-
-	// renderedMaterials.clear();
-	// UpdateDynamicSurfaces();
-	// UpdateFrameData();
 }
 
 void MaterialSystem::EndFrame() {
@@ -2059,7 +2058,6 @@ void MaterialSystem::RenderMaterials( const shaderSort_t fromSort, const shaderS
 		renderedMaterials.clear();
 		UpdateDynamicSurfaces();
 		UpdateFrameData();
-		// StartFrame();
 
 		// Make sure compute dispatches from the last frame finished writing to memory
 		glMemoryBarrier( GL_COMMAND_BARRIER_BIT );

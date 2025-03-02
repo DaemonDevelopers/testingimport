@@ -51,6 +51,7 @@
 #include "shadowFill_fp.glsl.h"
 #include "shadowFill_vp.glsl.h"
 #include "skybox_fp.glsl.h"
+#include "material_cp.glsl.h"
 #include "material_vp.glsl.h"
 #include "material_fp.glsl.h"
 #include "common.glsl.h"
@@ -101,6 +102,7 @@ std::unordered_map<std::string, std::string> shadermap({
 	{ "lighttile_vp.glsl", std::string(reinterpret_cast<const char*>(lighttile_vp_glsl), sizeof(lighttile_vp_glsl)) },
 	{ "liquid_fp.glsl", std::string(reinterpret_cast<const char*>(liquid_fp_glsl), sizeof(liquid_fp_glsl)) },
 	{ "liquid_vp.glsl", std::string(reinterpret_cast<const char*>(liquid_vp_glsl), sizeof(liquid_vp_glsl)) },
+	{ "material_cp.glsl", std::string( reinterpret_cast< const char* >( material_cp_glsl ), sizeof( material_cp_glsl ) ) },
 	{ "material_vp.glsl", std::string( reinterpret_cast< const char* >( material_vp_glsl ), sizeof( material_vp_glsl ) ) },
 	{ "material_fp.glsl", std::string( reinterpret_cast< const char* >( material_fp_glsl ), sizeof( material_fp_glsl ) ) },
 	{ "motionblur_fp.glsl", std::string(reinterpret_cast<const char*>(motionblur_fp_glsl), sizeof(motionblur_fp_glsl)) },
