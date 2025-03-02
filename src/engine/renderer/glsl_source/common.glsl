@@ -66,7 +66,7 @@ vec4 ColorModulateToColor( const in uint colorMod, const in float lightFactor ) 
 }
 
 float ColorModulateToLightFactor( const in uint colorMod ) {
-	return ( colorMod >> 6 ) & 0xF;
+	return float( ( colorMod >> 6 ) & 0xF );
 }
 
 // This is used to skip vertex colours if the colorMod doesn't need them
