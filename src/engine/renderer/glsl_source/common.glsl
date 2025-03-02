@@ -77,10 +77,11 @@ Bit 2: color += lightFactor
 Bit 3: alpha * 1
 Bit 4: alpha * ( -1 )
 Bit 5: alpha = 1
-Bits 6-25: available for future usage
-Bits 26-30: lightFactor:
-Bit 31: intentionally left blank, some rewrite is required (see below)
-if that bit has to be used once all the other bits are exhausted. */
+Bits 6-11: available for future usage
+Bits 12-15: lightFactor:
+Bit 16: intentionally left blank, some rewrite is required (see below)
+if that bit has to be used once all the other bits are exhausted.
+Bits 17-32: unusable as GLSL 1.20 int is 16-bit. */
 
 float colorModArray[3] = float[3] ( 0.0f, 1.0f, -1.0f );
 
@@ -124,16 +125,16 @@ vec4 ColorModulateToColor( const in int colorMod, const in float lightFactor ) {
 
 float ColorModulateToLightFactor( const in int colorMod ) {
 #if defined(HAVE_EXT_gpu_shader4)
-	/* The day the 31st bit is used, this should be done instead:
-	return float( ( colorMod >> 26 ) & 0xF ); */
-	return float( colorMod >> 26 );
+	/* The day the 16th bit is used, this should be done instead:
+	return float( ( colorMod >> 12 ) & 0xF ); */
+	return float( colorMod >> 12 );
 #else
-	/* The day the 31st bit used, this should be rewritten to
+	/* The day the 16th bit used, this should be rewritten to
 	extract the value without the sign, like that:
 	int v = colorMod;
-	if ( v < 0 ) v = 2147483647 - abs( v ) + 1;
-	return float( v / 67108864 ); */
-	return float( colorMod / 67108864 );
+	if ( v < 0 ) v =  32767 - abs( v ) + 1;
+	return float( v / 4096 ); */
+	return float( colorMod / 4096 );
 #endif
 }
 

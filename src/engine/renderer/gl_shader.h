@@ -3607,7 +3607,7 @@ class u_ColorModulateColorGen :
 					// vertexOverbright is only needed for non-lightmapped cases. When there is a
 					// lightmap, this is done by multiplying with the overbright-scaled white image
 					colorModulate |= Util::ordinal( ColorModulate::COLOR_LIGHTFACTOR );
-					lightFactor = uint32_t( tr.mapLightFactor ) << 26;
+					lightFactor = uint32_t( tr.mapLightFactor ) << 12;
 				} else {
 					colorModulate |= Util::ordinal( ColorModulate::COLOR_ONE );
 				}
@@ -3624,10 +3624,10 @@ class u_ColorModulateColorGen :
 
 		if ( useMapLightFactor ) {
 			ASSERT_EQ( vertexOverbright, false );
-			lightFactor = uint32_t( tr.mapLightFactor ) << 26;
+			lightFactor = uint32_t( tr.mapLightFactor ) << 12;
 		}
 
-		colorModulate |= lightFactor ? lightFactor : 1 << 26;
+		colorModulate |= lightFactor ? lightFactor : 1 << 12;
 
 		switch ( alphaGen ) {
 			case alphaGen_t::AGEN_VERTEX:
