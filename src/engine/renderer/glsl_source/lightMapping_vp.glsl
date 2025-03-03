@@ -49,7 +49,7 @@ uniform mat4		u_ModelViewProjectionMatrix;
 uniform float		u_Time;
 
 uniform int u_ColorModulateColorGen;
-uniform int u_Color;
+uniform colorPack u_Color;
 
 OUT(smooth) vec3	var_Position;
 OUT(smooth) vec2	var_TexCoords;

@@ -3059,6 +3059,21 @@ static int32_t packColors( const Color::Color& color )
 	}
 }
 
+class u_ColorFloat :
+	GLUniform4f
+{
+public:
+	u_ColorFloat( GLShader *shader ) :
+		GLUniform4f( shader, "u_Color" )
+	{
+	}
+
+	void SetUniform_Color( const Color::Color& color )
+	{
+		this->SetValue( color.ToArray() );
+	}
+};
+
 class u_Color :
 	GLUniform1i
 {
@@ -3071,6 +3086,21 @@ public:
 	void SetUniform_Color( const Color::Color& color )
 	{
 		this->SetValue( packColors( color ) );
+	}
+};
+
+class u_ColorGlobalFloat :
+	GLUniform4f
+{
+public:
+	u_ColorGlobalFloat( GLShader *shader ) :
+		GLUniform4f( shader, "u_ColorGlobal" )
+	{
+	}
+
+	void SetUniform_ColorGlobal( const Color::Color& color )
+	{
+		this->SetValue( color.ToArray() );
 	}
 };
 
@@ -3970,7 +4000,7 @@ class GLShader_generic :
 	public u_ModelMatrix,
 	public u_ModelViewProjectionMatrix,
 	public u_ColorModulateColorGen,
-	public u_Color,
+	public u_ColorFloat,
 	public u_Bones,
 	public u_VertexInterpolation,
 	public u_DepthScale,
@@ -4031,7 +4061,7 @@ class GLShader_lightMapping :
 	public u_TextureMatrix,
 	public u_SpecularExponent,
 	public u_ColorModulateColorGen,
-	public u_Color,
+	public u_ColorFloat,
 	public u_AlphaThreshold,
 	public u_ViewOrigin,
 	public u_ModelMatrix,
@@ -4128,7 +4158,7 @@ class GLShader_forwardLighting_omniXYZ :
 	public u_SpecularExponent,
 	public u_AlphaThreshold,
 	public u_ColorModulateColorGen,
-	public u_Color,
+	public u_ColorFloat,
 	public u_ViewOrigin,
 	public u_LightOrigin,
 	public u_LightColor,
@@ -4171,7 +4201,7 @@ class GLShader_forwardLighting_projXYZ :
 	public u_SpecularExponent,
 	public u_AlphaThreshold,
 	public u_ColorModulateColorGen,
-	public u_Color,
+	public u_ColorFloat,
 	public u_ViewOrigin,
 	public u_LightOrigin,
 	public u_LightColor,
@@ -4221,7 +4251,7 @@ class GLShader_forwardLighting_directionalSun :
 	public u_SpecularExponent,
 	public u_AlphaThreshold,
 	public u_ColorModulateColorGen,
-	public u_Color,
+	public u_ColorFloat,
 	public u_ViewOrigin,
 	public u_LightDir,
 	public u_LightColor,
@@ -4262,7 +4292,7 @@ class GLShader_shadowFill :
 	public u_LightRadius,
 	public u_ModelMatrix,
 	public u_ModelViewProjectionMatrix,
-	public u_Color,
+	public u_ColorFloat,
 	public u_Bones,
 	public u_VertexInterpolation,
 	public GLDeformStage,
@@ -4356,7 +4386,7 @@ class GLShader_fogQuake3 :
 	public u_FogMap,
 	public u_ModelMatrix,
 	public u_ModelViewProjectionMatrix,
-	public u_ColorGlobal,
+	public u_ColorGlobalFloat,
 	public u_Bones,
 	public u_VertexInterpolation,
 	public u_FogDistanceVector,

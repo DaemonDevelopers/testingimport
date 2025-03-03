@@ -45,6 +45,17 @@ array must be in the form of uvec4 array[] */
 
 // Common functions
 
+#if defined(HAVE_EXT_gpu_shader4)
+	#define colorPack int
+#else
+	#define colorPack vec4
+#endif
+
+vec4 UnpackColor( const in vec4 packedColor )
+{
+	return packedColor;
+}
+
 vec4 UnpackColor( const in int packedColor )
 {
 #if defined(HAVE_EXT_gpu_shader4)

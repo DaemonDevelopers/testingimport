@@ -37,7 +37,8 @@ uniform vec3		u_ViewOrigin;
 uniform float		u_Time;
 
 uniform int u_ColorModulateColorGen;
-uniform int u_Color;
+uniform colorPack u_Color;
+
 #if defined(USE_TCGEN_ENVIRONMENT)
 uniform mat4		u_ModelMatrix;
 #endif

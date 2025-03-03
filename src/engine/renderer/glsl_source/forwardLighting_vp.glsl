@@ -33,7 +33,7 @@ uniform mat4		u_ModelMatrix;
 uniform mat4		u_ModelViewProjectionMatrix;
 
 uniform int u_ColorModulateColorGen;
-uniform int u_Color;
+uniform colorPack u_Color;
 
 uniform float		u_Time;
 

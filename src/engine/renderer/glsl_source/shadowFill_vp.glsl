@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #insert vertexSkinning_vp
 #insert vertexAnimation_vp
 
-uniform int u_Color;
+uniform colorPack u_Color;
 
 uniform mat3x2		u_TextureMatrix;
 uniform mat4		u_ModelMatrix;
