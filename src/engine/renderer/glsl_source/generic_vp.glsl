@@ -67,10 +67,7 @@ void	main()
 	vec2 texCoord, lmCoord;
 
 	VertexFetch( position, LB, color, texCoord, lmCoord );
-	float lightFactor = ColorModulateToLightFactor( u_ColorModulateColorGen );
-	color.a = ColorModulateToVertexColor( u_ColorModulateColorGen ) ? 1.0 : color.a;
-	color *= ColorModulateToColor( u_ColorModulateColorGen, lightFactor );
-	color += UnpackColor( u_Color, lightFactor );
+	ColorModulateToColor_Generic( u_ColorModulateColorGen, UnpackColor( u_Color ), color );
 
 	DeformVertex( position,
 		      LB.normal,

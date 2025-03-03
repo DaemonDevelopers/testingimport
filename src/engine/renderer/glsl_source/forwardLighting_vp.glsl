@@ -64,7 +64,7 @@ void	main()
 	VertexFetch( position, LB, color, texCoord, lmCoord);
 
 	// assign color
-	color = color * ColorModulateToColor( u_ColorModulateColorGen ) + UnpackColor( u_Color );
+	ColorModulateToColor( u_ColorModulateColorGen, UnpackColor( u_Color ), color );
 
 	DeformVertex( position,
 		      LB.normal,

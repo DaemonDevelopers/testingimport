@@ -3581,10 +3581,16 @@ public:
 enum class ColorModulate {
 	COLOR_ONE = BIT( 0 ),
 	COLOR_MINUS_ONE = BIT( 1 ),
-	COLOR_LIGHTFACTOR = BIT( 2 ),
-	ALPHA_ONE = BIT( 3 ),
-	ALPHA_MINUS_ONE = BIT( 4 ),
-	ALPHA_ADD_ONE = BIT( 5 )
+	ALPHA_ONE = BIT( 2 ),
+	ALPHA_MINUS_ONE = BIT( 3 ),
+	HAS_LIGHT = BIT( 4 ),
+	SKIP_VERTEX_FORMAT = BIT( 5 ),
+	// <-- Insert new bits there and shift light factor bits accordingly.
+	LIGHTFACTOR_BIT0 = BIT( 6 ), // Can't be greater than 12.
+	LIGHTFACTOR_BIT1 = BIT( 7 ),
+	LIGHTFACTOR_BIT2 = BIT( 8 ),
+	LIGHTFACTOR_BIT3 = BIT( 9 ), // Can't be greater than 15.
+	// There should be not bit higher than that.
 };
 
 class u_ColorModulateColorGen :
@@ -3613,8 +3619,8 @@ class u_ColorModulateColorGen :
 				if ( vertexOverbright ) {
 					// vertexOverbright is only needed for non-lightmapped cases. When there is a
 					// lightmap, this is done by multiplying with the overbright-scaled white image
-					colorModulate |= Util::ordinal( ColorModulate::COLOR_LIGHTFACTOR );
-					lightFactor = uint32_t( tr.mapLightFactor ) << 13;
+					colorModulate |= Util::ordinal( ColorModulate::HAS_LIGHT );
+					lightFactor = uint32_t( tr.mapLightFactor ) << 6;
 				} else {
 					colorModulate |= Util::ordinal( ColorModulate::COLOR_ONE );
 				}
@@ -3631,10 +3637,10 @@ class u_ColorModulateColorGen :
 
 		if ( useMapLightFactor ) {
 			ASSERT_EQ( vertexOverbright, false );
-			lightFactor = uint32_t( tr.mapLightFactor ) << 13;
+			lightFactor = uint32_t( tr.mapLightFactor ) << 6;
 		}
 
-		colorModulate |= lightFactor ? lightFactor : 1 << 13;
+		colorModulate |= lightFactor ? lightFactor : 1 << 6;
 
 		switch ( alphaGen ) {
 			case alphaGen_t::AGEN_VERTEX:
@@ -3656,7 +3662,7 @@ class u_ColorModulateColorGen :
 			now it does the equivalent by setting the color in the shader in such way as if it was using
 			the default OpenGL values for the disabled arrays (0.0, 0.0, 0.0, 1.0)
 			This allows to skip the vertex format change */
-			colorModulate |= Util::ordinal( ColorModulate::ALPHA_ADD_ONE );
+			colorModulate |= Util::ordinal( ColorModulate::SKIP_VERTEX_FORMAT );
 		}
 		/* HACK: Store uint32_t as int32_t to be compatible with GLSL 1.20,
 		the GLSL code will convert back to uint32_t. */
