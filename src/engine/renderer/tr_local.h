@@ -57,6 +57,12 @@ using f16vec2_t = f16_t[2]; // half float vector
 using f16vec4_t = f16_t[4]; // half float vector
 
 // GL conversion helpers
+static inline byte floatToUnorm4(float f) {
+	// don't use Q_ftol here, as the semantics of Q_ftol
+	// has been changed from round to nearest to round to 0 !
+	return lrintf(f * 15.0f);
+}
+
 static inline float unorm8ToFloat(byte unorm8) {
 	return unorm8 * (1.0f / 255.0f);
 }
@@ -122,6 +128,13 @@ static inline void snorm16ToFloat( const i16vec4_t in, vec4_t out )
 	out[ 1 ] = snorm16ToFloat( in[ 1 ] );
 	out[ 2 ] = snorm16ToFloat( in[ 2 ] );
 	out[ 3 ] = snorm16ToFloat( in[ 3 ] );
+}
+
+static inline uint16_t packUnorm4x4( const vec4_t in ) {
+	return uint16_t( floatToUnorm4( in[0] ) )
+		| ( uint16_t( floatToUnorm4( in[1] ) ) << 4 )
+		| ( uint16_t( floatToUnorm4( in[2] ) ) << 8 )
+		| ( uint16_t( floatToUnorm4( in[3] ) ) << 12 );
 }
 
 static inline uint32_t packUnorm4x8( const vec4_t in ) {
