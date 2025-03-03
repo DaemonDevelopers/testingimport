@@ -151,7 +151,6 @@ void GL_BindNullProgram()
 
 void GL_SelectTexture( int unit )
 {
-
 	if ( glState.currenttmu == unit )
 	{
 		return;
@@ -3192,7 +3191,8 @@ void RB_RenderSSAO()
 {
 	GLimp_LogComment( "--- RB_RenderSSAO ---\n" );
 
-	if ( !glConfig2.textureGatherAvailable ) {
+	if ( !glConfig2.ssao )
+	{
 		return;
 	}
 
@@ -3205,7 +3205,7 @@ void RB_RenderSSAO()
 	GL_State( GLS_DEPTHTEST_DISABLE | GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO );
 	GL_Cull( cullType_t::CT_TWO_SIDED );
 
-	if ( r_ssao->integer < 0 ) {
+	if ( glConfig2.ssao && r_ssao.Get() == Util::ordinal( ssaoMode::SHOW ) ) {
 		// clear the screen to show only SSAO
 		GL_ClearColor( 1.0, 1.0, 1.0, 1.0 );
 		glClear( GL_COLOR_BUFFER_BIT );
@@ -3354,13 +3354,13 @@ void RB_CameraPostFX()
 
 	gl_cameraEffectsShader->SetUniform_InverseGamma( 1.0 / r_gamma->value );
 
-	const bool tonemap = r_tonemap.Get() && r_highPrecisionRendering.Get() && glConfig2.textureFloatAvailable;
+	const bool tonemap = r_toneMapping.Get() && r_highPrecisionRendering.Get() && glConfig2.textureFloatAvailable;
 	if ( tonemap ) {
-		vec4_t tonemapParms { r_tonemapContrast.Get(), r_tonemapHighlightsCompressionSpeed.Get() };
-		ComputeTonemapParams( tonemapParms[0], tonemapParms[1], r_tonemapHDRMax.Get(),
-			r_tonemapDarkAreaPointHDR.Get(), r_tonemapDarkAreaPointLDR.Get(), tonemapParms[2], tonemapParms[3] );
+		vec4_t tonemapParms { r_toneMappingContrast.Get(), r_toneMappingHighlightsCompressionSpeed.Get() };
+		ComputeTonemapParams( tonemapParms[0], tonemapParms[1], r_toneMappingHDRMax.Get(),
+			r_toneMappingDarkAreaPointHDR.Get(), r_toneMappingDarkAreaPointLDR.Get(), tonemapParms[2], tonemapParms[3] );
 		gl_cameraEffectsShader->SetUniform_TonemapParms( tonemapParms );
-		gl_cameraEffectsShader->SetUniform_TonemapExposure( r_tonemapExposure.Get() );
+		gl_cameraEffectsShader->SetUniform_TonemapExposure( r_toneMappingExposure.Get() );
 	}
 	gl_cameraEffectsShader->SetUniform_Tonemap( tonemap );
 
@@ -4725,9 +4725,7 @@ static void RB_RenderView( bool depthPass )
 		RB_RenderDrawSurfaces( shaderSort_t::SS_ENVIRONMENT_FOG, shaderSort_t::SS_OPAQUE, DRAWSURFACES_ALL );
 	}
 
-	if ( r_ssao->integer ) {
-		RB_RenderSSAO();
-	}
+	RB_RenderSSAO();
 
 	if ( r_speeds->integer == Util::ordinal(renderSpeeds_t::RSPEEDS_SHADING_TIMES) )
 	{
