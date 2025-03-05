@@ -385,6 +385,16 @@ void SV_SendClientGameState( client_t *client )
 
 		MSG_WriteByte( &msg, svc_baseline );
 		MSG_WriteDeltaEntity( &msg, &nullstate, base, true );
+
+		if ( MAX_MSGLEN - msg.cursize < 128 ) {
+			// We have too many entities to put them all into one msg_t, so split it here
+			MSG_WriteByte( &msg, svc_gamestatePartial );
+			SV_SendMessageToClient( &msg, client );
+
+			MSG_Init( &msg, msgBuffer, sizeof( msgBuffer ) );
+			MSG_WriteLong( &msg, client->lastClientCommand );
+			MSG_WriteByte( &msg, svc_gamestate );
+		}
 	}
 
 	MSG_WriteByte( &msg, svc_EOF );

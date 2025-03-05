@@ -403,11 +403,13 @@ void CL_ParseGamestate( msg_t *msg )
 
 	clc.connectPacketCount = 0;
 
-	// wipe local client state
-	CL_ClearState();
+	if ( !cl.reading ) {
+		// wipe local client state
+		CL_ClearState();
 
-	// a gamestate always marks a server command sequence
-	clc.serverCommandSequence = MSG_ReadLong( msg );
+		// a gamestate always marks a server command sequence
+		clc.serverCommandSequence = MSG_ReadLong( msg );
+	}
 
 	// parse all the configstrings and baselines
 	while (true)
@@ -443,6 +445,13 @@ void CL_ParseGamestate( msg_t *msg )
 			entityState_t nullstate{};
 			es = &cl.entityBaselines[ newnum ];
 			MSG_ReadDeltaEntity( msg, &nullstate, es, newnum );
+
+			cl.reading = false;
+		}
+		else if ( cmd == svc_gamestatePartial )
+		{
+			cl.reading = true;
+			break;
 		}
 		else
 		{
@@ -450,14 +459,16 @@ void CL_ParseGamestate( msg_t *msg )
 		}
 	}
 
-	clc.clientNum = MSG_ReadLong( msg );
+	if ( !cl.reading ) {
+		clc.clientNum = MSG_ReadLong( msg );
 
-	// parse serverId and other cvars
-	CL_SystemInfoChanged();
+		// parse serverId and other cvars
+		CL_SystemInfoChanged();
 
-	// This used to call CL_StartHunkUsers, but now we enter the download state before loading the
-	// cgame
-	CL_InitDownloads();
+		// This used to call CL_StartHunkUsers, but now we enter the download state before loading the
+		// cgame
+		CL_InitDownloads();
+	}
 }
 
 //=====================================================================

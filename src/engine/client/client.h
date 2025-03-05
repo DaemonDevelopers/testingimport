@@ -153,6 +153,8 @@ struct clientActive_t
 	clSnapshot_t  snapshots[ PACKET_BACKUP ];
 
 	entityState_t entityBaselines[ MAX_GENTITIES ]; // for delta compression when not in previous frame
+
+	bool reading; // For gamestate that is split between different msg_t
 };
 
 extern clientActive_t cl;
