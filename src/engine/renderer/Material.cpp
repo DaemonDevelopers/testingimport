@@ -153,10 +153,10 @@ void UpdateSurfaceDataGeneric3D( uint32_t* materials, shaderStage_t* pStage, boo
 	alphaGen_t alphaGen = SetAlphaGen( pStage );
 
 	const bool styleLightMap = pStage->type == stageType_t::ST_STYLELIGHTMAP || pStage->type == stageType_t::ST_STYLECOLORMAP;
-	gl_genericShaderMaterial->SetUniform_ColorModulateColorGen( rgbGen, alphaGen, mayUseVertexOverbright, styleLightMap );
+	gl_genericShaderMaterial->SetUniform_ColorModulateColorGen_Uint( rgbGen, alphaGen, mayUseVertexOverbright, styleLightMap );
 
 	Tess_ComputeColor( pStage );
-	gl_genericShaderMaterial->SetUniform_Color( tess.svars.color );
+	gl_genericShaderMaterial->SetUniform_Color_Uint( tess.svars.color );
 
 	bool hasDepthFade = pStage->hasDepthFade;
 	if ( hasDepthFade ) {
@@ -183,10 +183,10 @@ void UpdateSurfaceDataLightMapping( uint32_t* materials, shaderStage_t* pStage, 
 	}
 
 	// u_ColorModulate
-	gl_lightMappingShaderMaterial->SetUniform_ColorModulateColorGen( rgbGen, alphaGen, false, !fullbright );
+	gl_lightMappingShaderMaterial->SetUniform_ColorModulateColorGen_Uint( rgbGen, alphaGen, false, !fullbright );
 
 	// u_Color
-	gl_lightMappingShaderMaterial->SetUniform_Color( tess.svars.color );
+	gl_lightMappingShaderMaterial->SetUniform_Color_Uint( tess.svars.color );
 
 	// u_AlphaThreshold
 	gl_lightMappingShaderMaterial->SetUniform_AlphaTest( pStage->stateBits );
@@ -1059,7 +1059,7 @@ void BindShaderFog( Material* material ) {
 	gl_fogQuake3ShaderMaterial->SetUniform_FogDepthVector( fogDepthVector );
 	gl_fogQuake3ShaderMaterial->SetUniform_FogEyeT( eyeT );
 
-	gl_fogQuake3ShaderMaterial->SetUniform_ColorGlobal( fog->color );
+	gl_fogQuake3ShaderMaterial->SetUniform_ColorGlobal_Uint( fog->color );
 
 	gl_fogQuake3ShaderMaterial->SetUniform_ModelMatrix( backEnd.orientation.transformMatrix );
 	gl_fogQuake3ShaderMaterial->SetUniform_ModelViewProjectionMatrix( glState.modelViewProjectionMatrix[glState.stackIndex] );

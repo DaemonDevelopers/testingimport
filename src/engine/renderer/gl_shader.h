@@ -3051,7 +3051,7 @@ public:
 	{
 	}
 
-	void SetUniform_Color( const Color::Color& color )
+	void SetUniform_Color_Float( const Color::Color& color )
 	{
 		this->SetValue( color.ToArray() );
 	}
@@ -3066,11 +3066,23 @@ public:
 	{
 	}
 
-	void SetUniform_Color( const Color::Color& color )
+	void SetUniform_Color_Uint( const Color::Color& color )
 	{
 		this->SetValue( packUnorm4x8( color.ToArray() ) );
 	}
 };
+
+template<typename Shader> void SetUniform_Color( Shader* shader, const Color::Color& color )
+{
+	if( glConfig2.gpuShader4Available )
+	{
+		shader->SetUniform_Color_Uint( color );
+	}
+	else
+	{
+		shader->SetUniform_Color_Float( color );
+	}
+}
 
 class u_ColorGlobal_Float :
 	GLUniform4f
@@ -3081,7 +3093,7 @@ public:
 	{
 	}
 
-	void SetUniform_ColorGlobal( const Color::Color& color )
+	void SetUniform_ColorGlobal_Float( const Color::Color& color )
 	{
 		this->SetValue( color.ToArray() );
 	}
@@ -3094,10 +3106,22 @@ class u_ColorGlobal_Uint :
 		GLUniform1ui( shader, "u_ColorGlobal", true ) {
 	}
 
-	void SetUniform_ColorGlobal( const Color::Color& color ) {
+	void SetUniform_ColorGlobal_Uint( const Color::Color& color ) {
 		this->SetValue( packUnorm4x8( color.ToArray() ) );
 	}
 };
+
+template<typename Shader> void SetUniform_ColorGlobal( Shader* shader, const Color::Color& color )
+{
+	if( glConfig2.gpuShader4Available )
+	{
+		shader->SetUniform_ColorGlobal_Uint( color );
+	}
+	else
+	{
+		shader->SetUniform_ColorGlobal_Float( color );
+	}
+}
 
 class u_Frame :
 	GLUniform1ui {
@@ -3668,7 +3692,7 @@ public:
 	{
 	}
 
-	void SetUniform_ColorModulateColorGen(
+	void SetUniform_ColorModulateColorGen_Float(
 		const colorGen_t colorGen,
 		const alphaGen_t alphaGen,
 		const bool vertexOverbright = false,
@@ -3703,7 +3727,7 @@ class u_ColorModulateColorGen_Uint :
 		GLUniform1ui( shader, "u_ColorModulateColorGen" ) {
 	}
 
-	void SetUniform_ColorModulateColorGen(
+	void SetUniform_ColorModulateColorGen_Uint(
 		const colorGen_t colorGen,
 		const alphaGen_t alphaGen,
 		const bool vertexOverbright = false,
@@ -3755,6 +3779,23 @@ class u_ColorModulateColorGen_Uint :
 		this->SetValue( colorModulate_Uint );
 	}
 };
+
+template<typename Shader> void SetUniform_ColorModulateColorGen(
+		Shader* shader,
+		const colorGen_t colorGen,
+		const alphaGen_t alphaGen,
+		const bool vertexOverbright = false,
+		const bool useMapLightFactor = false )
+{
+	if( glConfig2.gpuShader4Available )
+	{
+		shader->SetUniform_ColorModulateColorGen_Uint( colorGen, alphaGen, vertexOverbright, useMapLightFactor );
+	}
+	else
+	{
+		shader->SetUniform_ColorModulateColorGen_Float( colorGen, alphaGen, vertexOverbright, useMapLightFactor );
+	}
+}
 
 class u_FogDistanceVector :
 	GLUniform4f
@@ -4054,7 +4095,9 @@ class GLShader_generic :
 	public u_ModelMatrix,
 	public u_ModelViewProjectionMatrix,
 	public u_ColorModulateColorGen_Float,
+	public u_ColorModulateColorGen_Uint,
 	public u_Color_Float,
+	public u_Color_Uint,
 	public u_Bones,
 	public u_VertexInterpolation,
 	public u_DepthScale,
@@ -4115,7 +4158,9 @@ class GLShader_lightMapping :
 	public u_TextureMatrix,
 	public u_SpecularExponent,
 	public u_ColorModulateColorGen_Float,
+	public u_ColorModulateColorGen_Uint,
 	public u_Color_Float,
+	public u_Color_Uint,
 	public u_AlphaThreshold,
 	public u_ViewOrigin,
 	public u_ModelMatrix,
@@ -4212,7 +4257,9 @@ class GLShader_forwardLighting_omniXYZ :
 	public u_SpecularExponent,
 	public u_AlphaThreshold,
 	public u_ColorModulateColorGen_Float,
+	public u_ColorModulateColorGen_Uint,
 	public u_Color_Float,
+	public u_Color_Uint,
 	public u_ViewOrigin,
 	public u_LightOrigin,
 	public u_LightColor,
@@ -4255,7 +4302,9 @@ class GLShader_forwardLighting_projXYZ :
 	public u_SpecularExponent,
 	public u_AlphaThreshold,
 	public u_ColorModulateColorGen_Float,
+	public u_ColorModulateColorGen_Uint,
 	public u_Color_Float,
+	public u_Color_Uint,
 	public u_ViewOrigin,
 	public u_LightOrigin,
 	public u_LightColor,
@@ -4305,7 +4354,9 @@ class GLShader_forwardLighting_directionalSun :
 	public u_SpecularExponent,
 	public u_AlphaThreshold,
 	public u_ColorModulateColorGen_Float,
+	public u_ColorModulateColorGen_Uint,
 	public u_Color_Float,
+	public u_Color_Uint,
 	public u_ViewOrigin,
 	public u_LightDir,
 	public u_LightColor,
@@ -4347,6 +4398,7 @@ class GLShader_shadowFill :
 	public u_ModelMatrix,
 	public u_ModelViewProjectionMatrix,
 	public u_Color_Float,
+	public u_Color_Uint,
 	public u_Bones,
 	public u_VertexInterpolation,
 	public GLDeformStage,
@@ -4441,6 +4493,7 @@ class GLShader_fogQuake3 :
 	public u_ModelMatrix,
 	public u_ModelViewProjectionMatrix,
 	public u_ColorGlobal_Float,
+	public u_ColorGlobal_Uint,
 	public u_Bones,
 	public u_VertexInterpolation,
 	public u_FogDistanceVector,
@@ -4460,7 +4513,7 @@ class GLShader_fogQuake3Material :
 	public u_FogMap,
 	public u_ModelMatrix,
 	public u_ModelViewProjectionMatrix,
-	public u_ColorGlobal_Float,
+	public u_ColorGlobal_Uint,
 	public u_FogDistanceVector,
 	public u_FogDepthVector,
 	public u_FogEyeT,
@@ -4477,6 +4530,7 @@ class GLShader_fogGlobal :
 	public u_ModelViewProjectionMatrix,
 	public u_UnprojectMatrix,
 	public u_Color_Float,
+	public u_Color_Uint,
 	public u_FogDistanceVector
 {
 public:

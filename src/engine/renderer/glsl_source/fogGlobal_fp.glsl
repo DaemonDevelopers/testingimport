@@ -27,8 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 uniform sampler2D	u_ColorMap; // fog texture
 uniform sampler2D	u_DepthMap;
 
-// fogGlobal can't use the colorPack type because there is no Material variant.
-uniform vec4 u_Color;
+uniform colorPack u_Color;
 
 uniform vec4		u_FogDistanceVector;
 uniform mat4		u_UnprojectMatrix;

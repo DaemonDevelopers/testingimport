@@ -45,7 +45,7 @@ array must be in the form of uvec4 array[] */
 
 // Common functions
 
-#if defined(USE_MATERIAL_SYSTEM)
+#if defined(HAVE_EXT_gpu_shader4)
 	#define colorPack uint
 	#define colorModulatePack uint
 #else
@@ -53,17 +53,13 @@ array must be in the form of uvec4 array[] */
 	#define colorModulatePack vec4
 #endif
 
-#if defined(USE_MATERIAL_SYSTEM)
-vec4 UnpackColor( const in uint packedColor )
+vec4 UnpackColor( const in colorPack packedColor )
 {
+#if defined(HAVE_EXT_gpu_shader4)
 	return unpackUnorm4x8( packedColor );
-}
-#endif
-
-// fogGlobal can't use the colorPack type because there is no Material variant.
-vec4 UnpackColor( const in vec4 packedColor )
-{
+#else
 	return packedColor;
+#endif
 }
 
 /* colorMod uint format:
@@ -87,7 +83,7 @@ colorMod[ 3 ]: alpha * f */
 
 vec4 ColorModulateToColor( const in colorModulatePack colorMod )
 {
-#if defined(USE_MATERIAL_SYSTEM)
+#if defined(HAVE_EXT_gpu_shader4)
 	vec3 colorModArray = vec3( 0.0f, 1.0f, -1.0f );
 
 	uint rgbIndex = colorMod & 3u;
@@ -112,7 +108,7 @@ modBits_t ColorModulateToBits( const in colorModulatePack colorMod )
 {
 	modBits_t modBits;
 
-#if defined(USE_MATERIAL_SYSTEM)
+#if defined(HAVE_EXT_gpu_shader4)
 	modBits.alphaAddOne = bool( ( colorMod >> 4u ) & 1u );
 	modBits.isLightStyle = bool( ( colorMod >> 27u ) & 1u );
 #else
@@ -125,7 +121,7 @@ modBits_t ColorModulateToBits( const in colorModulatePack colorMod )
 
 float ColorModulateToLightFactor( const in colorModulatePack colorMod )
 {
-#if defined(USE_MATERIAL_SYSTEM)
+#if defined(HAVE_EXT_gpu_shader4)
 	return float( colorMod >> 28u );
 #else
 	return abs( colorMod.g );
