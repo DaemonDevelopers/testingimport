@@ -43,33 +43,129 @@ array must be in the form of uvec4 array[] */
 #define UINT_FROM_UVEC4_ARRAY( array, id ) ( ( array )[( id ) / 4][( id ) % 4] )
 #define UVEC2_FROM_UVEC4_ARRAY( array, id ) ( ( id ) % 2 == 0 ? ( array )[( id ) / 2].xy : ( array )[( id ) / 2].zw )
 
-/* Bit 0: color * 1
-Bit 1: color * ( -1 )
-Bit 2: color += lightFactor
-Bit 3: alpha * 1
-Bit 4: alpha * ( -1 )
-Bit 5: alpha = 1
-Bit 6-9: lightFactor */
+// Common functions
 
-float colorModArray[3] = float[3] ( 0.0f, 1.0f, -1.0f );
+#if defined(HAVE_EXT_gpu_shader4)
+	#define colorPack uint
+	#define colorModulatePack uint
+#else
+	#define colorPack vec4
+	#define colorModulatePack vec4
+#endif
 
-vec4 ColorModulateToColor( const in uint colorMod ) {
-	vec4 colorModulate = vec4( colorModArray[colorMod & 3] );
-	colorModulate.a = ( colorModArray[( colorMod & 24 ) >> 3] );
-	return colorModulate;
+vec4 UnpackColor( const in colorPack packedColor )
+{
+#if defined(HAVE_EXT_gpu_shader4)
+	return unpackUnorm4x8( packedColor );
+#else
+	return packedColor;
+#endif
 }
 
-vec4 ColorModulateToColor( const in uint colorMod, const in float lightFactor ) {
-	vec4 colorModulate = vec4( colorModArray[colorMod & 3] + ( ( colorMod & 4 ) >> 2 ) * lightFactor );
-	colorModulate.a = ( colorModArray[( colorMod & 24 ) >> 3] );
-	return colorModulate;
+/* colorMod uint format:
+
+colorMod << 0: color * 1
+colorMod << 1: color * ( -1 )
+colorMod << 2: alpha * 1
+colorMod << 3: alpha * ( -1 )
+colorMod << 4: alpha = 1
+colorMod << 5-26: available for future usage
+colorMod << 27: color += lightFactor
+colorMod << 28-31: lightFactor
+
+colorMod float format:
+
+colorMod[ 0 ]: color * f
+colorMod[ 1 ] absolute value: lightFactor
+colorMod[ 1 ] minus sign: color += lightFactor
+colorMod[ 2 ]: alpha = 1
+colorMod[ 3 ]: alpha * f */
+
+vec4 ColorModulateToColor( const in colorModulatePack colorMod )
+{
+#if defined(HAVE_EXT_gpu_shader4)
+	vec3 colorModArray = vec3( 0.0f, 1.0f, -1.0f );
+
+	uint rgbIndex = colorMod & 3u;
+	uint alphaIndex = ( colorMod >> 2u ) & 3u;
+
+	float rgb = colorModArray[ rgbIndex ];
+	float alpha = colorModArray[ alphaIndex ];
+#else
+	float rgb = colorMod.r;
+	float alpha = colorMod.a;
+#endif
+
+	return vec4( rgb, rgb, rgb, alpha );
 }
 
-float ColorModulateToLightFactor( const in uint colorMod ) {
-	return ( colorMod >> 6 ) & 0xF;
+struct modBits_t {
+	bool alphaAddOne;
+	bool isLightStyle;
+};
+
+modBits_t ColorModulateToBits( const in colorModulatePack colorMod )
+{
+	modBits_t modBits;
+
+#if defined(HAVE_EXT_gpu_shader4)
+	modBits.alphaAddOne = bool( ( colorMod >> 4u ) & 1u );
+	modBits.isLightStyle = bool( ( colorMod >> 27u ) & 1u );
+#else
+	modBits.alphaAddOne = colorMod.b != 0;
+	modBits.isLightStyle = colorMod.g < 0;
+#endif
+
+	return modBits;
 }
 
-// This is used to skip vertex colours if the colorMod doesn't need them
-bool ColorModulateToVertexColor( const in uint colorMod ) {
-	return ( colorMod & 32 ) == 32;
+float ColorModulateToLightFactor( const in colorModulatePack colorMod )
+{
+#if defined(HAVE_EXT_gpu_shader4)
+	return float( colorMod >> 28u );
+#else
+	return abs( colorMod.g );
+#endif
+}
+
+void ModulateColor(
+	const in vec4 colorModulation,
+	const in vec4 unpackedColor,
+	inout vec4 color )
+{
+	color *= colorModulation;
+	color += unpackedColor;
+}
+
+void ColorModulateColor(
+	const in colorModulatePack colorMod,
+	const in colorPack packedColor,
+	inout vec4 color )
+{
+	vec4 colorModulation = ColorModulateToColor( colorMod );
+
+	vec4 unpackedColor = UnpackColor( packedColor );
+
+	ModulateColor( colorModulation, unpackedColor, color );
+}
+
+void ColorModulateColor_lightFactor(
+	const in colorModulatePack colorMod,
+	const in colorPack packedColor,
+	inout vec4 color )
+{
+	vec4 colorModulation = ColorModulateToColor( colorMod );
+	modBits_t modBits = ColorModulateToBits( colorMod );
+	float lightFactor = ColorModulateToLightFactor( colorMod );
+
+	// This is used to skip vertex colours if the colorMod doesn't need them.
+	color.a = modBits.alphaAddOne ? 1.0 : color.a;
+
+	colorModulation.rgb += vec3( modBits.isLightStyle ? lightFactor : 0 );
+
+	vec4 unpackedColor = UnpackColor( packedColor );
+
+	unpackedColor.rgb *= lightFactor;
+
+	ModulateColor( colorModulation, unpackedColor, color );
 }

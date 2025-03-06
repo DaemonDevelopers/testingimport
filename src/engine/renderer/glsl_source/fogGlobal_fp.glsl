@@ -22,11 +22,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 /* fogGlobal_fp.glsl */
 
+#insert common
+
 uniform sampler2D	u_ColorMap; // fog texture
 uniform sampler2D	u_DepthMap;
 
+uniform colorPack u_Color;
+
 uniform vec4		u_FogDistanceVector;
-uniform uint u_Color;
 uniform mat4		u_UnprojectMatrix;
 
 #if __VERSION__ > 120
@@ -52,5 +55,5 @@ void	main()
 
 	vec4 color = texture2D(u_ColorMap, st);
 
-	outputColor = unpackUnorm4x8( u_Color ) * color;
+	outputColor = UnpackColor( u_Color ) * color;
 }

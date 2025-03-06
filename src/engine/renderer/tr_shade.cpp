@@ -671,22 +671,22 @@ static void DrawTris()
 
 	if ( r_showBatches->integer || r_showLightBatches->integer )
 	{
-		gl_genericShader->SetUniform_Color( Color::Color::Indexed( backEnd.pc.c_batches % 8 ) );
+		SetUniform_Color( gl_genericShader, Color::Color::Indexed( backEnd.pc.c_batches % 8 ) );
 	}
 	else if ( glState.currentVBO == tess.vbo )
 	{
-		gl_genericShader->SetUniform_Color( Color::Red );
+		SetUniform_Color( gl_genericShader, Color::Red );
 	}
 	else if ( glState.currentVBO )
 	{
-		gl_genericShader->SetUniform_Color( Color::Blue );
+		SetUniform_Color( gl_genericShader, Color::Blue );
 	}
 	else
 	{
-		gl_genericShader->SetUniform_Color( Color::White );
+		SetUniform_Color( gl_genericShader, Color::White );
 	}
 
-	gl_genericShader->SetUniform_ColorModulateColorGen( colorGen_t::CGEN_CONST, alphaGen_t::AGEN_CONST );
+	SetUniform_ColorModulateColorGen( gl_genericShader, colorGen_t::CGEN_CONST, alphaGen_t::AGEN_CONST );
 	gl_genericShader->SetUniform_ModelMatrix( backEnd.orientation.transformMatrix );
 	gl_genericShader->SetUniform_ModelViewProjectionMatrix( glState.modelViewProjectionMatrix[ glState.stackIndex ] );
 
@@ -851,10 +851,10 @@ void Render_generic3D( shaderStage_t *pStage )
 	// hand needs to know the real diffuse color, hence the separate u_LightFactor.
 	bool mayUseVertexOverbright = pStage->type == stageType_t::ST_COLORMAP && tess.bspSurface;
 	const bool styleLightMap = pStage->type == stageType_t::ST_STYLELIGHTMAP || pStage->type == stageType_t::ST_STYLECOLORMAP;
-	gl_genericShader->SetUniform_ColorModulateColorGen( rgbGen, alphaGen, mayUseVertexOverbright, styleLightMap );
+	SetUniform_ColorModulateColorGen( gl_genericShader, rgbGen, alphaGen, mayUseVertexOverbright, styleLightMap );
 
 	// u_Color
-	gl_genericShader->SetUniform_Color( tess.svars.color );
+	SetUniform_Color( gl_genericShader, tess.svars.color );
 
 	gl_genericShader->SetUniform_ModelMatrix( backEnd.orientation.transformMatrix );
 	gl_genericShader->SetUniform_ModelViewProjectionMatrix( glState.modelViewProjectionMatrix[ glState.stackIndex ] );
@@ -1052,10 +1052,10 @@ void Render_lightMapping( shaderStage_t *pStage )
 	gl_lightMappingShader->SetUniform_Time( backEnd.refdef.floatTime - backEnd.currentEntity->e.shaderTime );
 
 	// u_ColorModulate
-	gl_lightMappingShader->SetUniform_ColorModulateColorGen( rgbGen, alphaGen, false, lightMode != lightMode_t::FULLBRIGHT );
+	SetUniform_ColorModulateColorGen( gl_lightMappingShader, rgbGen, alphaGen, false, lightMode != lightMode_t::FULLBRIGHT );
 
 	// u_Color
-	gl_lightMappingShader->SetUniform_Color( tess.svars.color );
+	SetUniform_Color( gl_lightMappingShader, tess.svars.color );
 
 	// u_AlphaThreshold
 	gl_lightMappingShader->SetUniform_AlphaTest( pStage->stateBits );
@@ -1244,7 +1244,7 @@ static void Render_shadowFill( shaderStage_t *pStage )
 
 	if ( r_debugShadowMaps->integer )
 	{
-		gl_shadowFillShader->SetUniform_Color( Color::Color::Indexed( backEnd.pc.c_batches % 8 ) );
+		SetUniform_Color( gl_shadowFillShader, Color::Color::Indexed( backEnd.pc.c_batches % 8 ) );
 	}
 
 	// u_AlphaThreshold
@@ -1325,10 +1325,10 @@ static void Render_forwardLighting_DBS_omni( shaderStage_t *pStage,
 	colorGen_t rgbGen = SetRgbGen( pStage );
 	alphaGen_t alphaGen = SetAlphaGen( pStage );
 
-	gl_forwardLightingShader_omniXYZ->SetUniform_ColorModulateColorGen( rgbGen, alphaGen );
+	SetUniform_ColorModulateColorGen( gl_forwardLightingShader_omniXYZ, rgbGen, alphaGen );
 
 	// u_Color
-	gl_forwardLightingShader_omniXYZ->SetUniform_Color( tess.svars.color );
+	SetUniform_Color( gl_forwardLightingShader_omniXYZ, tess.svars.color );
 
 	// u_AlphaThreshold
 	gl_forwardLightingShader_omniXYZ->SetUniform_AlphaTest( pStage->stateBits );
@@ -1500,10 +1500,10 @@ static void Render_forwardLighting_DBS_proj( shaderStage_t *pStage,
 	colorGen_t rgbGen = SetRgbGen( pStage );
 	alphaGen_t alphaGen = SetAlphaGen( pStage );
 
-	gl_forwardLightingShader_projXYZ->SetUniform_ColorModulateColorGen( rgbGen, alphaGen );
+	SetUniform_ColorModulateColorGen( gl_forwardLightingShader_projXYZ, rgbGen, alphaGen );
 
 	// u_Color
-	gl_forwardLightingShader_projXYZ->SetUniform_Color( tess.svars.color );
+	SetUniform_Color( gl_forwardLightingShader_projXYZ, tess.svars.color );
 
 	// u_AlphaThreshold
 	gl_forwardLightingShader_projXYZ->SetUniform_AlphaTest( pStage->stateBits );
@@ -1676,10 +1676,10 @@ static void Render_forwardLighting_DBS_directional( shaderStage_t *pStage, trRef
 	colorGen_t rgbGen = SetRgbGen( pStage );
 	alphaGen_t alphaGen = SetAlphaGen( pStage );
 
-	gl_forwardLightingShader_directionalSun->SetUniform_ColorModulateColorGen( rgbGen, alphaGen );
+	SetUniform_ColorModulateColorGen( gl_forwardLightingShader_directionalSun, rgbGen, alphaGen );
 
 	// u_Color
-	gl_forwardLightingShader_directionalSun->SetUniform_Color( tess.svars.color );
+	SetUniform_Color( gl_forwardLightingShader_directionalSun, tess.svars.color );
 
 	// u_AlphaThreshold
 	gl_forwardLightingShader_directionalSun->SetUniform_AlphaTest( pStage->stateBits );
@@ -2272,7 +2272,7 @@ void Render_fog( shaderStage_t* pStage )
 	gl_fogQuake3Shader->SetUniform_FogEyeT( eyeT );
 
 	// u_Color
-	gl_fogQuake3Shader->SetUniform_ColorGlobal( fog->color );
+	SetUniform_ColorGlobal( gl_fogQuake3Shader, fog->color );
 
 	gl_fogQuake3Shader->SetUniform_ModelMatrix( backEnd.orientation.transformMatrix );
 	gl_fogQuake3Shader->SetUniform_ModelViewProjectionMatrix( glState.modelViewProjectionMatrix[ glState.stackIndex ] );

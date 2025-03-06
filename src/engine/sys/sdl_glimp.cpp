@@ -2573,13 +2573,20 @@ static void GLimp_InitExtensions()
 
 	glConfig2.geometryCacheAvailable = glConfig2.vertexAttribBindingAvailable && glConfig2.directStateAccessAvailable;
 
-	glConfig2.materialSystemAvailable = glConfig2.shaderDrawParametersAvailable && glConfig2.SSBOAvailable
-		&& glConfig2.multiDrawIndirectAvailable && glConfig2.bindlessTexturesAvailable
-		&& glConfig2.computeShaderAvailable && glConfig2.shadingLanguage420PackAvailable
-		&& glConfig2.explicitUniformLocationAvailable && glConfig2.shaderImageLoadStoreAvailable
-		&& glConfig2.shaderAtomicCountersAvailable && glConfig2.indirectParametersAvailable
+	glConfig2.materialSystemAvailable =
+		glConfig2.bindlessTexturesAvailable
+		&& glConfig2.computeShaderAvailable
 		&& glConfig2.directStateAccessAvailable
-		&& glConfig2.geometryCacheAvailable;
+		&& glConfig2.explicitUniformLocationAvailable
+		&& glConfig2.geometryCacheAvailable
+		&& glConfig2.gpuShader4Available
+		&& glConfig2.indirectParametersAvailable
+		&& glConfig2.multiDrawIndirectAvailable
+		&& glConfig2.shaderAtomicCountersAvailable
+		&& glConfig2.shaderDrawParametersAvailable
+		&& glConfig2.shaderImageLoadStoreAvailable
+		&& glConfig2.shadingLanguage420PackAvailable
+		&& glConfig2.SSBOAvailable;
 
 	// This requires GLEW 2.2+, so skip if it's a lower version
 #ifdef GL_KHR_shader_subgroup

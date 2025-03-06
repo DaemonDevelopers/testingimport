@@ -35,7 +35,7 @@ uniform sampler2D	u_GlowMap;
 uniform float		u_AlphaThreshold;
 uniform vec3		u_ViewOrigin;
 
-uniform uint u_ColorModulateColorGen;
+uniform colorModulatePack u_ColorModulateColorGen;
 
 IN(smooth) vec3		var_Position;
 IN(smooth) vec2		var_TexCoords;
