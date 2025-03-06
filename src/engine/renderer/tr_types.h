@@ -90,7 +90,7 @@ enum RegisterShaderFlags_t {
 	RSF_NOMIP = BIT( 2 ),
 	RSF_FITSCREEN = BIT( 3 ),
 	RSF_LIGHT_ATTENUATION = BIT( 4 ),
-	RSF_NOLIGHTSCALE = BIT( 5 ), // TODO(0.56): delete, does nothing
+	RSF_FORCE_LIGHTMAP = BIT( 5 ), // Used to make particles/trails work with the lightGrid in GLSL
 	RSF_SPRITE = BIT( 6 ),
 };
 

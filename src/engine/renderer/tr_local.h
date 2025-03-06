@@ -1319,6 +1319,8 @@ enum class shaderProfilerRenderSubGroupsMode {
 
 		int		autoSpriteMode;
 
+		bool forceLightMap;
+
 		uint8_t         numDeforms;
 		deformStage_t   deforms[ MAX_SHADER_DEFORMS ];
 
