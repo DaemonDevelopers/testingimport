@@ -2992,3 +2992,23 @@ void GLimp_LogComment( const char *comment )
 					 strlen( buf ), buf );
 	}
 }
+
+class SetWindowOriginCmd : public Cmd::StaticCmd
+{
+public:
+	SetWindowOriginCmd() : StaticCmd("setWindowOrigin", Cmd::CLIENT, "move the window") {}
+
+	void Run( const Cmd::Args &args ) const
+	{
+		int x, y;
+		if ( args.Argc() != 3
+			|| !Str::ParseInt( x, args.Argv( 1 ) ) || !Str::ParseInt( y, args.Argv( 2 ) ) )
+		{
+			Print( "Usage: setWindowOrigin <x> <y>" );
+			return;
+		}
+
+		SDL_SetWindowPosition( window, x, y );
+	}
+};
+static SetWindowOriginCmd setWindowOriginCmdRegistration;
