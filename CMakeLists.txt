@@ -765,7 +765,7 @@ if (USE_BREAKPAD)
     endif()
 endif()
 
-option(PREFER_EXTERNAL_LIBS "Tries to use system libs where possible." ON)
+option(PREFER_EXTERNAL_LIBS "Tries to use system libs where possible." OFF)
 
 macro(prefer_package LIB_NAME LIB_CMAKE)
     if (PREFER_EXTERNAL_LIBS AND NOT NACL)
