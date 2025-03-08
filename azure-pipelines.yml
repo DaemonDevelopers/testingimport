@@ -53,7 +53,7 @@ jobs:
     - bash: |
         set -e
         cmake --version
-        cmake -Wdev -Wdeprecated -DUSE_PRECOMPILED_HEADER=0 -DUSE_WERROR=1 -DBE_VERBOSE=1 -DCMAKE_BUILD_TYPE=Release -DBUILD_DUMMY_APP=1 -DBUILD_TESTS=1 -H. -Bbuild
+        cmake -Wdev -Wdeprecated -DUSE_PRECOMPILED_HEADER=0 -DUSE_WERROR=1 -DBE_VERBOSE=1 -DCMAKE_BUILD_TYPE=Release -DBUILD_DUMMY_APP=1 -DBUILD_TESTS=1 -DPREFER_EXTERNAL_LIBS=OFF -H. -Bbuild
         cmake --build build -- -j`sysctl -n hw.logicalcpu`
       displayName: 'Build'
     - bash: |
@@ -117,13 +117,13 @@ jobs:
     - bash: |
         set -e
         sudo apt-get update
-        sudo apt-get -y -q --no-install-recommends install zlib1g-dev libncursesw5-dev libgeoip-dev nettle-dev libgmp-dev libcurl4-gnutls-dev libsdl2-dev libogg-dev libvorbis-dev libopusfile-dev libwebp-dev libjpeg8-dev libpng-dev libfreetype6-dev libglew-dev libopenal-dev liblua5.2-dev ninja-build $(EXTRA_PACKAGES)
+        sudo apt-get -y -q --no-install-recommends install zlib1g-dev libncursesw5-dev libgeoip-dev nettle-dev libgmp-dev libcurl4-gnutls-dev libsdl2-dev libogg-dev libvorbis-dev libopusfile-dev libwebp-dev libjpeg8-dev libpng-dev  libglew-dev libopenal-dev liblua5.2-dev ninja-build $(EXTRA_PACKAGES)
         $(EXTRA_INSTALLS)
       displayName: 'Install deps'
     - bash: |
         set -e
         cmake --version
-        cmake -G "Ninja" -Wdev -Wdeprecated -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN_FILE) -DCMAKE_C_COMPILER=$(C_COMPILER) -DCMAKE_CXX_COMPILER=$(CXX_COMPILER) -DUSE_PRECOMPILED_HEADER=0 -DUSE_WERROR=1 -DBE_VERBOSE=1 -DBUILD_DUMMY_APP=1 -DBUILD_TESTS=1 -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -H. -Bbuild
+        cmake -G "Ninja" -Wdev -Wdeprecated -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN_FILE) -DCMAKE_C_COMPILER=$(C_COMPILER) -DCMAKE_CXX_COMPILER=$(CXX_COMPILER) -DUSE_PRECOMPILED_HEADER=0 -DUSE_WERROR=1 -DBE_VERBOSE=1 -DBUILD_DUMMY_APP=1 -DBUILD_TESTS=1 -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) PREFER_EXTERNAL_LIBS=OFF -DPREFER_EXTERNAL_LIBS=OFF -H. -Bbuild
         cmake --build build -- -j`nproc`
       displayName: 'Build'
     - bash: |
