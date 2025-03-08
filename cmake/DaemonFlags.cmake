@@ -381,6 +381,8 @@ else()
 		# Don't set _FORTIFY_SOURCE in debug builds.
 	endif()
 
+	try_c_cxx_flag(FPIC "-fPIC")
+
 	if (USE_HARDENING)
 		# PNaCl accepts the flags but does not define __stack_chk_guard and __stack_chk_fail.
 		if (NOT NACL)
@@ -395,8 +397,6 @@ else()
 		try_c_cxx_flag(WSTACK_PROTECTOR "-Wstack-protector")
 
 		if (NOT NACL OR (NACL AND GAME_PIE))
-			try_c_cxx_flag(FPIC "-fPIC")
-
 			# The -pie flag requires -fPIC:
 			# > ld: error: relocation R_X86_64_64 cannot be used against local symbol; recompile with -fPIC
 			# This flag isn't used on macOS:
