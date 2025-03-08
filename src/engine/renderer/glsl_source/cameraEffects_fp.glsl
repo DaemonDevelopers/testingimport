@@ -35,6 +35,8 @@ IN(smooth) vec2		var_TexCoords;
 
 DECLARE_OUTPUT(vec4)
 
+// Tone mapping is not available when high-precision float framebuffer isn't enabled or supported.
+#if defined(r_highPrecisionRendering) && defined(HAVE_ARB_texture_float)
 /* x: contrast
 y: highlightsCompressionSpeed
 z: shoulderClip
@@ -48,6 +50,7 @@ vec3 TonemapLottes( vec3 color ) {
   return pow( color, vec3( u_TonemapParms[0] ) )
          / ( pow( color, vec3( u_TonemapParms[0] * u_TonemapParms[1] ) ) * u_TonemapParms[2] + u_TonemapParms[3] );
 }
+#endif
 
 void main()
 {
@@ -56,9 +59,10 @@ void main()
 
 	vec4 color = texture2D(u_CurrentMap, st);
 
-	if( u_Tonemap ) {
-		color.rgb = TonemapLottes( color.rgb * u_TonemapExposure );
-	}
+#if defined(r_highPrecisionRendering) && defined(HAVE_ARB_texture_float)
+	color.rgb = TonemapLottes( color.rgb * u_TonemapExposure );
+#endif
+
 	color.rgb = clamp( color.rgb, vec3( 0.0f ), vec3( 1.0f ) );
 
 #if defined(r_colorGrading)

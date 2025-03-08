@@ -152,6 +152,7 @@ struct glconfig2_t
 	bool reflectionMappingAvailable;
 	bool reflectionMapping;
 	bool bloom;
+	bool ssao;
 	bool motionBlur;
 };
 

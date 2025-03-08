@@ -205,20 +205,24 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 	cvar_t      *r_gamma;
 
-	Cvar::Cvar<bool> r_tonemap( "r_tonemap", "Use  HDR->LDR tonemapping", Cvar::NONE, true );
-	Cvar::Cvar<float> r_tonemapExposure( "r_tonemapExposure", "Tonemap exposure", Cvar::NONE, 1.0f );
-	Cvar::Range<Cvar::Cvar<float>> r_tonemapContrast( "r_tonemapContrast", "Makes dark areas light up faster",
+	Cvar::Cvar<bool> r_toneMapping(
+		"r_toneMapping", "Use  HDR->LDR tonemapping", Cvar::NONE, true );
+	Cvar::Cvar<float> r_toneMappingExposure(
+		"r_toneMappingExposure", "Tonemap exposure", Cvar::NONE, 1.0f );
+	Cvar::Range<Cvar::Cvar<float>> r_toneMappingContrast(
+		"r_toneMappingContrast", "Makes dark areas light up faster",
 		Cvar::NONE, 1.6f, 1.0f, 10.0f );
-	Cvar::Range<Cvar::Cvar<float>> r_tonemapHighlightsCompressionSpeed( "r_tonemapHighlightsCompressionSpeed",
-		"Highlights saturation",
+	Cvar::Range<Cvar::Cvar<float>> r_toneMappingHighlightsCompressionSpeed(
+		"r_toneMappingHighlightsCompressionSpeed", "Highlights saturation",
 		Cvar::NONE, 0.977f, 0.0f, 10.0f );
-	Cvar::Range<Cvar::Cvar<float>> r_tonemapHDRMax( "r_tonemapHDRMax", "HDR white point",
+	Cvar::Range<Cvar::Cvar<float>> r_toneMappingHDRMax(
+		"r_toneMappingHDRMax", "HDR white point",
 		Cvar::NONE, 8.0f, 1.0f, 128.0f );
-	Cvar::Range<Cvar::Cvar<float>> r_tonemapDarkAreaPointHDR( "r_tonemapDarkAreaPointHDR",
-		"Cut-off for dark area light-up",
+	Cvar::Range<Cvar::Cvar<float>> r_toneMappingDarkAreaPointHDR(
+		"r_toneMappingDarkAreaPointHDR", "Cut-off for dark area light-up",
 		Cvar::NONE, 0.18f, 0.0f, 1.0f );
-	Cvar::Range<Cvar::Cvar<float>> r_tonemapDarkAreaPointLDR( "r_tonemapDarkAreaPointLDR",
-		"Convert to this brightness at dark area cut-off",
+	Cvar::Range<Cvar::Cvar<float>> r_toneMappingDarkAreaPointLDR(
+		"r_toneMappingDarkAreaPointLDR", "Convert to this brightness at dark area cut-off",
 		Cvar::NONE, 0.268f, 0.0f, 1.0f );
 
 	cvar_t      *r_lockpvs;
@@ -312,7 +316,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 	Cvar::Cvar<float> r_bloomBlur( "r_bloomBlur", "Bloom strength", Cvar::NONE, 1.0 );
 	Cvar::Cvar<int> r_bloomPasses( "r_bloomPasses", "Amount of bloom passes in each direction", Cvar::NONE, 2 );
 	cvar_t      *r_FXAA;
-	cvar_t      *r_ssao;
+	Cvar::Range<Cvar::Cvar<int>> r_ssao( "r_ssao",
+		"Screen space ambient occlusion: "
+		"-1: show, 0: disabled, 1: enabled",
+		Cvar::NONE,
+		Util::ordinal( ssaoMode::DISABLED ),
+		Util::ordinal( ssaoMode::SHOW ),
+		Util::ordinal( ssaoMode::ENABLED ) );
 
 	cvar_t      *r_evsmPostProcess;
 
@@ -1241,7 +1251,7 @@ ScreenshotCmd screenshotPNGRegistration("screenshotPNG", ssFormat_t::SSF_PNG, "p
 
 		Cvar::Latch( r_bloom );
 		r_FXAA = Cvar_Get( "r_FXAA", "0", CVAR_LATCH | CVAR_ARCHIVE );
-		r_ssao = Cvar_Get( "r_ssao", "0", CVAR_LATCH | CVAR_ARCHIVE );
+		Cvar::Latch( r_ssao );
 
 		// temporary variables that can change at any time
 		r_showImages = Cvar_Get( "r_showImages", "0", CVAR_TEMP );
