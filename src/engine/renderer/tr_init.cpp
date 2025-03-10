@@ -874,7 +874,7 @@ ScreenshotCmd screenshotPNGRegistration("screenshotPNG", ssFormat_t::SSF_PNG, "p
 		glState.vertexAttribsState = 0;
 		glState.vertexAttribPointersSet = 0;
 
-		GL_BindProgram( nullptr );
+		GL_BindNullProgram();
 
 		glBindBuffer( GL_ARRAY_BUFFER, 0 );
 		glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
@@ -1137,7 +1137,7 @@ ScreenshotCmd screenshotPNGRegistration("screenshotPNG", ssFormat_t::SSF_PNG, "p
 				}
 
 				int deformIndex =
-					gl_shaderManager.getDeformShaderIndex( shader.deforms, shader.numDeforms );
+					gl_shaderManager.GetDeformShaderIndex( shader.deforms, shader.numDeforms );
 
 				for ( shaderStage_t *stage = shader.stages; stage != shader.lastStage; stage++ )
 				{

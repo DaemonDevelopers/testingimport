@@ -90,12 +90,14 @@ static Cvar::Cvar<bool> r_arb_map_buffer_range( "r_arb_map_buffer_range",
 	"Use GL_ARB_map_buffer_range if available", Cvar::NONE, true );
 static Cvar::Cvar<bool> r_arb_multi_draw_indirect( "r_arb_multi_draw_indirect",
 	"Use GL_ARB_multi_draw_indirect if available", Cvar::NONE, true );
-static Cvar::Cvar<bool> r_arb_shader_draw_parameters( "r_arb_shader_draw_parameters",
-	"Use GL_ARB_shader_draw_parameters if available", Cvar::NONE, true );
+static Cvar::Cvar<bool> r_arb_separate_shader_objects( "r_arb_separate_shader_objects",
+	"Use GL_ARB_separate_shader_objects if available", Cvar::NONE, true );
 static Cvar::Cvar<bool> r_arb_shader_atomic_counters( "r_arb_shader_atomic_counters",
 	"Use GL_ARB_shader_atomic_counters if available", Cvar::NONE, true );
 static Cvar::Cvar<bool> r_arb_shader_atomic_counter_ops( "r_arb_shader_atomic_counter_ops",
 	"Use GL_ARB_shader_atomic_counter_ops if available", Cvar::NONE, true );
+static Cvar::Cvar<bool> r_arb_shader_draw_parameters( "r_arb_shader_draw_parameters",
+	"Use GL_ARB_shader_draw_parameters if available", Cvar::NONE, true );
 static Cvar::Cvar<bool> r_arb_shader_image_load_store( "r_arb_shader_image_load_store",
 	"Use GL_ARB_shader_image_load_store if available", Cvar::NONE, true );
 static Cvar::Cvar<bool> r_arb_shader_storage_buffer_object( "r_arb_shader_storage_buffer_object",
@@ -1993,6 +1995,7 @@ static void GLimp_InitExtensions()
 	Cvar::Latch( r_arb_internalformat_query2 );
 	Cvar::Latch( r_arb_map_buffer_range );
 	Cvar::Latch( r_arb_multi_draw_indirect );
+	Cvar::Latch( r_arb_separate_shader_objects );
 	Cvar::Latch( r_arb_shader_atomic_counters );
 	Cvar::Latch( r_arb_shader_atomic_counter_ops );
 	Cvar::Latch( r_arb_shader_draw_parameters );
@@ -2570,6 +2573,9 @@ static void GLimp_InitExtensions()
 
 	// made required in OpenGL 4.3
 	glConfig2.vertexAttribBindingAvailable = LOAD_EXTENSION_WITH_TEST( ExtFlag_NONE, ARB_vertex_attrib_binding, r_arb_vertex_attrib_binding.Get() );
+
+	// made required in OpenGL 4.1
+	glConfig2.separateShaderObjectsAvailable = LOAD_EXTENSION_WITH_TEST( ExtFlag_NONE, ARB_separate_shader_objects, r_arb_separate_shader_objects.Get() );
 
 	glConfig2.geometryCacheAvailable = glConfig2.vertexAttribBindingAvailable && glConfig2.directStateAccessAvailable;
 

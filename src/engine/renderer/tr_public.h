@@ -93,6 +93,7 @@ struct glconfig2_t
 	int textureRGBA16BlendAvailable;
 	bool textureIntegerAvailable;
 	bool textureRGAvailable;
+	bool separateShaderObjectsAvailable;
 	bool computeShaderAvailable;
 	bool bindlessTexturesAvailable; // do the driver/hardware support it
 	bool usingBindlessTextures; // are we using them right now

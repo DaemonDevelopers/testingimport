@@ -120,32 +120,36 @@ GLuint64 BindAnimatedImage( int unit, const textureBundle_t *bundle )
 	return GL_BindToTMU( unit, bundle->image[ index ] );
 }
 
-void GL_BindProgram( shaderProgram_t *program )
-{
-	if ( !program )
-	{
+void GL_BindProgram( GLuint pipeline, bool override ) {
+	if ( !pipeline ) {
 		GL_BindNullProgram();
 		return;
 	}
 
-	if ( glState.currentProgram != program )
-	{
-		glUseProgram( program->program );
-		glState.currentProgram = program;
+	if ( glState.currentPipeline != pipeline ) {
+		if ( glConfig2.separateShaderObjectsAvailable && !override ) {
+			glBindProgramPipeline( pipeline );
+		} else {
+			glUseProgram( pipeline );
+		}
+
+		glState.currentPipeline = pipeline;
 	}
 }
 
-void GL_BindNullProgram()
-{
-	if ( r_logFile->integer )
-	{
+void GL_BindNullProgram( bool override ) {
+	if ( r_logFile->integer ) {
 		GLimp_LogComment( "--- GL_BindNullProgram ---\n" );
 	}
 
-	if ( glState.currentProgram )
-	{
-		glUseProgram( 0 );
-		glState.currentProgram = nullptr;
+	if ( glState.currentPipeline ) {
+		if ( glConfig2.separateShaderObjectsAvailable && !override ) {
+			glBindProgramPipeline( 0 );
+		} else {
+			glUseProgram( 0 );
+		}
+
+		glState.currentPipeline = 0;
 	}
 }
 
@@ -1378,7 +1382,7 @@ static void RB_SetupLightForShadowing( trRefLight_t *light, int index,
 				       bool shadowClip )
 {
 	// HACK: bring OpenGL into a safe state or strange FBO update problems will occur
-	GL_BindProgram( nullptr );
+	GL_BindNullProgram();
 	GL_State( GLS_DEFAULT );
 
 	GL_Bind( tr.whiteImage );

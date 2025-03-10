@@ -1415,18 +1415,8 @@ enum class shaderProfilerRenderSubGroupsMode {
 	};
 
 // *INDENT-ON*
-
-// Tr3B - shaderProgram_t represents a pair of one
-// GLSL vertex and one GLSL fragment shader
-	struct shaderProgram_t
-	{
-		GLuint    program;
-		GLuint    VS, FS, CS;
-		uint32_t  attribs; // vertex array attributes
-		GLint    *uniformLocations;
-		GLuint   *uniformBlockIndexes;
-		byte     *uniformFirewall;
-	};
+	struct ShaderProgramDescriptor;
+	struct ShaderPipelineDescriptor;
 
 // trRefdef_t holds everything that comes in refdef_t,
 // as well as the locally generated scene information
@@ -2439,7 +2429,7 @@ enum class shaderProfilerRenderSubGroupsMode {
 		float           vertexAttribsInterpolation; // 0 = no interpolation, 1 = final position
 		uint32_t        vertexAttribsNewFrame; // offset for VBO vertex animations
 		uint32_t        vertexAttribsOldFrame; // offset for VBO vertex animations
-		shaderProgram_t *currentProgram;
+		GLuint currentPipeline;
 		FBO_t           *currentFBO;
 		VBO_t           *currentVBO;
 		IBO_t           *currentIBO;
@@ -2723,6 +2713,7 @@ enum class shaderProfilerRenderSubGroupsMode {
 
 		bool worldLoaded;
 		world_t    *world;
+		std::string loadingMap;
 
 		TextureManager textureManager;
 
@@ -3239,10 +3230,10 @@ inline bool checkGLErrors()
 	void GL_BindNearestCubeMap( int unit, const vec3_t xyz );
 	void GL_Unbind( image_t *image );
 	GLuint64 BindAnimatedImage( int unit, const textureBundle_t *bundle );
-	void GL_TextureFilter( image_t *image, filterType_t filterType );
-	void GL_BindProgram( shaderProgram_t *program );
 	GLuint64 GL_BindToTMU( int unit, image_t *image );
-	void GL_BindNullProgram();
+	void GL_TextureFilter( image_t *image, filterType_t filterType );
+	void GL_BindProgram( GLuint pipeline, bool override = false );
+	void GL_BindNullProgram( bool override = false);
 	void GL_SetDefaultState();
 	void GL_SelectTexture( int unit );
 	void GL_TextureMode( const char *string );

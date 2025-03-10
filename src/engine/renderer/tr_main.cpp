@@ -2469,7 +2469,7 @@ static void R_DebugGraphics()
 		// the render thread can't make callbacks to the main thread
 		R_SyncRenderThread();
 
-		GL_BindProgram( nullptr );
+		GL_BindNullProgram();
 
 		GL_Bind( tr.whiteImage );
 
