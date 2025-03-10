@@ -191,7 +191,7 @@ void GLSL_InitWorldShaders() {
 
 	// Material system shaders that are always loaded if material system is available
 	if ( glConfig2.usingMaterialSystem ) {
-		gl_shaderManager.load( gl_cullShader );
+		gl_shaderManager.LoadShader( gl_cullShader );
 	}
 }
 
@@ -211,20 +211,20 @@ static void GLSL_InitGPUShadersOrError()
 	gl_shaderManager.GenerateBuiltinHeaders();
 
 	// single texture rendering
-	gl_shaderManager.load( gl_genericShader );
+	gl_shaderManager.LoadShader( gl_genericShader );
 
 	// standard light mapping
-	gl_shaderManager.load( gl_lightMappingShader );
+	gl_shaderManager.LoadShader( gl_lightMappingShader );
 
 	// Material system shaders that are always loaded if material system is available
 	if ( glConfig2.usingMaterialSystem )
 	{
-		gl_shaderManager.load( gl_genericShaderMaterial );
-		gl_shaderManager.load( gl_lightMappingShaderMaterial );
+		gl_shaderManager.LoadShader( gl_genericShaderMaterial );
+		gl_shaderManager.LoadShader( gl_lightMappingShaderMaterial );
 
-		gl_shaderManager.load( gl_clearSurfacesShader );
-		gl_shaderManager.load( gl_processSurfacesShader );
-		gl_shaderManager.load( gl_depthReductionShader );
+		gl_shaderManager.LoadShader( gl_clearSurfacesShader );
+		gl_shaderManager.LoadShader( gl_processSurfacesShader );
+		gl_shaderManager.LoadShader( gl_depthReductionShader );
 	}
 
 	if ( tr.world ) // this only happens with /glsl_restart
@@ -240,18 +240,18 @@ static void GLSL_InitGPUShadersOrError()
 		{
 		case realtimeLightingRenderer_t::LEGACY:
 			// projective lighting ( Doom3 style )
-			gl_shaderManager.load( gl_forwardLightingShader_projXYZ );
+			gl_shaderManager.LoadShader( gl_forwardLightingShader_projXYZ );
 
 			// omni-directional specular bump mapping ( Doom3 style )
-			gl_shaderManager.load( gl_forwardLightingShader_omniXYZ );
+			gl_shaderManager.LoadShader( gl_forwardLightingShader_omniXYZ );
 
 			// directional sun lighting ( Doom3 style )
-			gl_shaderManager.load( gl_forwardLightingShader_directionalSun );
+			gl_shaderManager.LoadShader( gl_forwardLightingShader_directionalSun );
 			break;
 		case realtimeLightingRenderer_t::TILED:
-			gl_shaderManager.load( gl_depthtile1Shader );
-			gl_shaderManager.load( gl_depthtile2Shader );
-			gl_shaderManager.load( gl_lighttileShader );
+			gl_shaderManager.LoadShader( gl_depthtile1Shader );
+			gl_shaderManager.LoadShader( gl_depthtile2Shader );
+			gl_shaderManager.LoadShader( gl_lighttileShader );
 			DAEMON_FALLTHROUGH;
 		default:
 			/* Dynamic shadowing code also needs this shader.
@@ -266,7 +266,7 @@ static void GLSL_InitGPUShadersOrError()
 			if ( glConfig2.shadowMapping )
 			{
 				// projective lighting ( Doom3 style )
-				gl_shaderManager.load( gl_forwardLightingShader_projXYZ );
+				gl_shaderManager.LoadShader( gl_forwardLightingShader_projXYZ );
 			}
 		}
 	}
@@ -274,106 +274,106 @@ static void GLSL_InitGPUShadersOrError()
 	if ( glConfig2.reflectionMappingAvailable )
 	{
 		// bumped cubemap reflection for abitrary polygons ( EMBM )
-		gl_shaderManager.load( gl_reflectionShader );
+		gl_shaderManager.LoadShader( gl_reflectionShader );
 
 		if ( glConfig2.usingMaterialSystem )
 		{
-			gl_shaderManager.load( gl_reflectionShaderMaterial );
+			gl_shaderManager.LoadShader( gl_reflectionShaderMaterial );
 		}
 	}
 
 	if ( r_drawSky.Get() )
 	{
 		// skybox drawing for abitrary polygons
-		gl_shaderManager.load( gl_skyboxShader );
+		gl_shaderManager.LoadShader( gl_skyboxShader );
 
 		if ( glConfig2.usingMaterialSystem )
 		{
-			gl_shaderManager.load( gl_skyboxShaderMaterial );
+			gl_shaderManager.LoadShader( gl_skyboxShaderMaterial );
 		}
 	}
 
 	// Fog GLSL is always loaded and built because disabling fog is cheat.
 	{
 		// Q3A volumetric fog
-		gl_shaderManager.load( gl_fogQuake3Shader );
+		gl_shaderManager.LoadShader( gl_fogQuake3Shader );
 
 		if ( glConfig2.usingMaterialSystem )
 		{
-			gl_shaderManager.load( gl_fogQuake3ShaderMaterial );
+			gl_shaderManager.LoadShader( gl_fogQuake3ShaderMaterial );
 		}
 
 		// global fog post process effect
-		gl_shaderManager.load( gl_fogGlobalShader );
+		gl_shaderManager.LoadShader( gl_fogGlobalShader );
 	}
 
 	if ( r_heatHaze->integer )
 	{
 		// heatHaze post process effect
-		gl_shaderManager.load( gl_heatHazeShader );
+		gl_shaderManager.LoadShader( gl_heatHazeShader );
 
 		if ( glConfig2.usingMaterialSystem )
 		{
-			gl_shaderManager.load( gl_heatHazeShaderMaterial );
+			gl_shaderManager.LoadShader( gl_heatHazeShaderMaterial );
 		}
 	}
 
 	if ( glConfig2.bloom )
 	{
 		// screen post process effect
-		gl_shaderManager.load( gl_screenShader );
+		gl_shaderManager.LoadShader( gl_screenShader );
 
 		if ( glConfig2.usingMaterialSystem )
 		{
-			gl_shaderManager.load( gl_screenShaderMaterial );
+			gl_shaderManager.LoadShader( gl_screenShaderMaterial );
 		}
 
 		// LDR bright pass filter
-		gl_shaderManager.load( gl_contrastShader );
+		gl_shaderManager.LoadShader( gl_contrastShader );
 	}
 
 	
 	// portal process effect
-	gl_shaderManager.load( gl_portalShader );
+	gl_shaderManager.LoadShader( gl_portalShader );
 
 	// camera post process effect
-	gl_shaderManager.load( gl_cameraEffectsShader );
+	gl_shaderManager.LoadShader( gl_cameraEffectsShader );
 
 	if ( glConfig2.bloom || glConfig2.shadowMapping )
 	{
 		// gaussian blur
-		gl_shaderManager.load( gl_blurShader );
+		gl_shaderManager.LoadShader( gl_blurShader );
 	}
 
 	if ( glConfig2.shadowMapping )
 	{
 		// shadowmap distance compression
-		gl_shaderManager.load( gl_shadowFillShader );
+		gl_shaderManager.LoadShader( gl_shadowFillShader );
 
 		// debug utils
-		gl_shaderManager.load( gl_debugShadowMapShader );
+		gl_shaderManager.LoadShader( gl_debugShadowMapShader );
 	}
 
 	if ( r_liquidMapping->integer != 0 )
 	{
-		gl_shaderManager.load( gl_liquidShader );
+		gl_shaderManager.LoadShader( gl_liquidShader );
 
 		if ( glConfig2.usingMaterialSystem )
 		{
-			gl_shaderManager.load( gl_liquidShaderMaterial );
+			gl_shaderManager.LoadShader( gl_liquidShaderMaterial );
 		}
 	}
 
 	if ( glConfig2.motionBlur )
 	{
-		gl_shaderManager.load( gl_motionblurShader );
+		gl_shaderManager.LoadShader( gl_motionblurShader );
 	}
 
 	if ( r_ssao->integer )
 	{
 		if ( glConfig2.textureGatherAvailable )
 		{
-			gl_shaderManager.load( gl_ssaoShader );
+			gl_shaderManager.LoadShader( gl_ssaoShader );
 		}
 		else
 		{
@@ -383,12 +383,12 @@ static void GLSL_InitGPUShadersOrError()
 
 	if ( r_FXAA->integer != 0 )
 	{
-		gl_shaderManager.load( gl_fxaaShader );
+		gl_shaderManager.LoadShader( gl_fxaaShader );
 	}
 
 	if ( r_lazyShaders.Get() == 0 )
 	{
-		gl_shaderManager.buildAll();
+		gl_shaderManager.BuildAll();
 	}
 }
 
@@ -430,7 +430,7 @@ void GLSL_InitGPUShaders()
 			GLSL_InitGPUShadersOrError();
 			if ( r_lazyShaders.Get() == 1 && tr.world != nullptr )
 			{
-				gl_shaderManager.buildAll();
+				gl_shaderManager.BuildAll();
 			}
 			Log::Warn("External shaders in use.");
 		}
@@ -465,7 +465,7 @@ void GLSL_ShutdownGPUShaders()
 {
 	R_SyncRenderThread();
 
-	gl_shaderManager.freeAll();
+	gl_shaderManager.FreeAll();
 
 	gl_genericShader = nullptr;
 	gl_genericShaderMaterial = nullptr;
@@ -511,7 +511,7 @@ void GLSL_FinishGPUShaders()
 {
 	R_SyncRenderThread();
 
-	gl_shaderManager.buildAll();
+	gl_shaderManager.BuildAll();
 }
 
 /*

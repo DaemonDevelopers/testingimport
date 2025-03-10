@@ -5229,7 +5229,7 @@ static void FinishStages()
 	GroupActiveStages();
 
 	int deformIndex = shader.numDeforms > 0
-		? gl_shaderManager.getDeformShaderIndex( shader.deforms, shader.numDeforms )
+		? gl_shaderManager.GetDeformShaderIndex( shader.deforms, shader.numDeforms )
 		: 0;
 
 	for ( size_t s = 0; s < numStages; s++ )

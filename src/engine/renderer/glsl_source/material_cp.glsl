@@ -39,10 +39,10 @@ struct BoundingSphere {
 	float radius;
 };
 
-struct SurfaceDescriptor {
+/* struct SurfaceDescriptor {
 	BoundingSphere boundingSphere;
 	uint surfaceCommandIDs[MAX_SURFACE_COMMANDS];
-};
+}; */
 
 struct PortalSurface {
 	BoundingSphere boundingSphere;

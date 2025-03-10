@@ -231,15 +231,39 @@ std::string GetShaderPath()
 GLShaderManager::~GLShaderManager()
 = default;
 
-void GLShaderManager::freeAll()
-{
+void GLShaderManager::FreeAll() {
 	_shaders.clear();
 
-	for ( GLint sh : _deformShaders )
-		glDeleteShader( sh );
-
-	_deformShaders.clear();
+	deformShaderCount = 0;
 	_deformShaderLookup.clear();
+
+	for ( const ShaderProgramDescriptor& program : shaderProgramDescriptors ) {
+		if ( program.id ) {
+			glDeleteProgram( program.id );
+		}
+
+		if ( program.uniformLocations ) {
+			Z_Free( program.uniformLocations );
+		}
+
+		if ( program.uniformBlockIndexes ) {
+			Z_Free( program.uniformBlockIndexes );
+		}
+
+		if ( program.uniformFirewall ) {
+			Z_Free( program.uniformFirewall );
+		}
+	}
+
+	shaderProgramDescriptors.clear();
+
+	for (  const ShaderDescriptor& shader : shaderDescriptors ) {
+		if ( shader.id ) {
+			glDeleteShader( shader.id );
+		}
+	}
+
+	shaderDescriptors.clear();
 
 	while ( !_shaderBuildQueue.empty() )
 	{
@@ -247,17 +271,16 @@ void GLShaderManager::freeAll()
 	}
 }
 
-void GLShaderManager::UpdateShaderProgramUniformLocations( GLShader *shader, shaderProgram_t *shaderProgram ) const
-{
+void GLShaderManager::UpdateShaderProgramUniformLocations( GLShader* shader, ShaderProgramDescriptor* shaderProgram ) const {
 	size_t uniformSize = shader->_uniformStorageSize;
 	size_t numUniforms = shader->_uniforms.size();
 	size_t numUniformBlocks = shader->_uniformBlocks.size();
 
 	// create buffer for storing uniform locations
-	shaderProgram->uniformLocations = ( GLint * ) Z_Malloc( sizeof( GLint ) * numUniforms );
+	shaderProgram->uniformLocations = ( GLint* ) Z_Malloc( sizeof( GLint ) * numUniforms );
 
 	// create buffer for uniform firewall
-	shaderProgram->uniformFirewall = ( byte * ) Z_Malloc( uniformSize );
+	shaderProgram->uniformFirewall = ( byte* ) Z_Malloc( uniformSize );
 
 	// update uniforms
 	for (GLUniform *uniform : shader->_uniforms)
@@ -267,7 +290,7 @@ void GLShaderManager::UpdateShaderProgramUniformLocations( GLShader *shader, sha
 
 	if( glConfig2.uniformBufferObjectAvailable ) {
 		// create buffer for storing uniform block indexes
-		shaderProgram->uniformBlockIndexes = ( GLuint * ) Z_Malloc( sizeof( GLuint ) * numUniformBlocks );
+		shaderProgram->uniformBlockIndexes = ( GLuint* ) Z_Malloc( sizeof( GLuint ) * numUniformBlocks );
 
 		// update uniform blocks
 		for (GLUniformBlock *uniformBlock : shader->_uniformBlocks)
@@ -868,36 +891,39 @@ void GLShaderManager::GenerateWorldHeaders() {
 	GLWorldHeader = GLHeader( "GLWorldHeader", GenWorldHeader(), this );
 }
 
-std::string GLShaderManager::BuildDeformShaderText( const std::string& steps )
-{
+std::string GLShaderManager::GetDeformShaderName( const int index ) {
+	if ( ( !tr.world && !tr.loadingMap.size() ) || !index ) {
+		return Str::Format( "deformVertexes_%i", index );
+	}
+
+	if ( !tr.world ) {
+		return Str::Format( "deformVertexes_%s_%i", tr.loadingMap, index );
+	}
+
+	return Str::Format( "deformVertexes_%s_%i", tr.world->baseName, index );
+}
+
+std::string GLShaderManager::BuildDeformShaderText( const std::string& steps ) {
 	std::string shaderText;
 
 	shaderText = steps + "\n";
+	shaderText += GetShaderText( "deformVertexes_vp.glsl" );
 
-	// We added a lot of stuff but if we do something bad
-	// in the GLSL shaders then we want the proper line
-	// so we have to reset the line counting.
-	shaderText += "#line 0\n";
-	shaderText += GetShaderText("deformVertexes_vp.glsl");
 	return shaderText;
 }
 
-int GLShaderManager::getDeformShaderIndex( deformStage_t *deforms, int numDeforms )
-{
+int GLShaderManager::GetDeformShaderIndex( deformStage_t *deforms, int numDeforms ) {
 	std::string steps = BuildDeformSteps( deforms, numDeforms );
-	int index = _deformShaderLookup[ steps ] - 1;
+	uint32_t index = _deformShaderLookup[steps];
 
-	if( index < 0 )
-	{
-		// compile new deform shader
+	if( !index ) {
 		std::string shaderText = GLShaderManager::BuildDeformShaderText( steps );
-		_deformShaders.push_back(CompileShader( "deformVertexes",
-							shaderText,
-							{ &GLVersionDeclaration,
-							  &GLVertexHeader },
-							GL_VERTEX_SHADER ) );
-		index = _deformShaders.size();
-		_deformShaderLookup[ steps ] = index--;
+		index = deformShaderCount;
+		FindShader( GetDeformShaderName( index ), shaderText, GL_VERTEX_SHADER,
+			std::vector<GLHeader*> { &GLVersionDeclaration, &GLVertexHeader } );
+
+		deformShaderCount++;
+		_deformShaderLookup[steps] = deformShaderCount;
 	}
 
 	return index;
@@ -940,102 +966,257 @@ static bool IsUnusedPermutation( const char *compileMacros )
 	return false;
 }
 
-// returns whether something was really built (using a cached one counts)
-bool GLShaderManager::buildPermutation( GLShader *shader, int macroIndex, int deformIndex )
-{
-	std::string compileMacros;
-	size_t i = macroIndex + ( deformIndex << shader->_compileMacros.size() );
-
-	// program already exists
-	if ( i < shader->_shaderPrograms.size() &&
-	     shader->_shaderPrograms[ i ].program )
-	{
-		return false;
+void GLShaderManager::BuildShader( ShaderDescriptor* descriptor ) {
+	if ( descriptor->id ) {
+		return;
 	}
 
-	if ( !shader->GetCompileMacrosString( macroIndex, compileMacros ) )
-	{
-		return false;
-	}
+	const int start = Sys::Milliseconds();
 
-	shader->BuildShaderCompileMacros( compileMacros );
+	const GLchar* text[1] = { descriptor->shaderSource.data() };
+	GLint length[1] = { ( GLint ) descriptor->shaderSource.size() };
 
-	if ( IsUnusedPermutation( compileMacros.c_str() ) )
-		return false;
+	GLuint shader = glCreateShader( descriptor->type );
+	GL_CheckErrors();
 
-	if ( i >= shader->_shaderPrograms.size() )
-		shader->_shaderPrograms.resize( (deformIndex + 1) << shader->_compileMacros.size() );
-
-	shaderProgram_t *shaderProgram = &shader->_shaderPrograms[ i ];
-	shaderProgram->attribs = shader->_vertexAttribsRequired; // | _vertexAttribsOptional;
-
-	if ( deformIndex > 0 )
-	{
-		shaderProgram_t *baseShader = &shader->_shaderPrograms[ macroIndex ];
-		if ( ( !baseShader->VS && shader->_hasVertexShader ) || ( !baseShader->FS && shader->_hasFragmentShader ) )
-			CompileGPUShaders( shader, baseShader, compileMacros );
-
-		shaderProgram->program = glCreateProgram();
-		if ( shader->_hasVertexShader ) {
-			glAttachShader( shaderProgram->program, baseShader->VS );
-			glAttachShader( shaderProgram->program, _deformShaders[deformIndex] );
-		}
-		if ( shader->_hasFragmentShader ) {
-			glAttachShader( shaderProgram->program, baseShader->FS );
-		}
-
-		BindAttribLocations( shaderProgram->program );
-		LinkProgram( shaderProgram->program );
-	}
-	else if ( !LoadShaderBinary( shader, i ) )
-	{
-		CompileAndLinkGPUShaderProgram(	shader, shaderProgram, compileMacros, deformIndex );
-		SaveShaderBinary( shader, i );
-	}
-
-	UpdateShaderProgramUniformLocations( shader, shaderProgram );
-	GL_BindProgram( shaderProgram );
-	shader->SetShaderProgramUniforms( shaderProgram );
-	GL_BindProgram( nullptr );
+	glShaderSource( shader, 1, text, length );
+	glCompileShader( shader );
 
 	GL_CheckErrors();
+
+	GLint compiled;
+	glGetShaderiv( shader, GL_COMPILE_STATUS, &compiled );
+
+	if ( !compiled ) {
+		std::string log = GetInfoLog( shader );
+		std::vector<InfoLogEntry> infoLog = ParseInfoLog( log );
+		PrintShaderSource( descriptor->name, shader, infoLog );
+
+		Log::Warn( "Compile log:\n%s", log );
+
+		switch ( descriptor->type ) {
+			case GL_VERTEX_SHADER:
+				ThrowShaderError( Str::Format( "Couldn't compile vertex shader: %s", descriptor->name ) );
+			case GL_FRAGMENT_SHADER:
+				ThrowShaderError( Str::Format( "Couldn't compile fragment shader: %s", descriptor->name ) );
+			case GL_COMPUTE_SHADER:
+				ThrowShaderError( Str::Format( "Couldn't compile compute shader: %s", descriptor->name ) );
+			default:
+				break;
+		}
+	}
+
+	descriptor->id = shader;
+
+	const int time = Sys::Milliseconds() - start;
+	compileTime += time;
+	compileCount++;
+	Log::Debug( "Compilation: %i", time );
+}
+
+void GLShaderManager::BuildShaderProgram( ShaderProgramDescriptor* descriptor ) {
+	if ( descriptor->id ) {
+		return;
+	}
+
+	const int start = Sys::Milliseconds();
+
+	GLuint program = glCreateProgram();
+	GL_CheckErrors();
+
+	for ( const GLuint& shader : descriptor->shaders ) {
+		if ( shader ) {
+			glAttachShader( program, shader );
+		} else {
+			break;
+		}
+	}
+	GL_CheckErrors();
+
+	BindAttribLocations( program );
+
+	if ( glConfig2.getProgramBinaryAvailable ) {
+		glProgramParameteri( program, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE );
+	}
+
+	GLint linked;
+	glLinkProgram( program );
+
+	glGetProgramiv( program, GL_LINK_STATUS, &linked );
+
+	if ( !linked ) {
+		Log::Warn( "Link log:" );
+		Log::Warn( GetInfoLog( program ) );
+		ThrowShaderError( "Shader program failed to link!" );
+	}
+
+	descriptor->id = program;
+
+	const int time = Sys::Milliseconds() - start;
+	linkTime += time;
+	linkCount++;
+	Log::Debug( "Program creation + linking: %i", time );
+}
+
+ShaderProgramDescriptor* GLShaderManager::FindShaderProgram( std::vector<ShaderEntry>& shaders, const std::string& mainShader ) {
+	std::vector<ShaderProgramDescriptor>::iterator it = std::find_if( shaderProgramDescriptors.begin(), shaderProgramDescriptors.end(),
+		[&]( const ShaderProgramDescriptor& program ) {
+			for ( const ShaderEntry& shader : shaders ) {
+				if ( std::find( program.shaderNames, program.shaderNames + program.shaderCount, shader )
+					== program.shaderNames + program.shaderCount ) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+	);
+
+	if ( it == shaderProgramDescriptors.end() ) {
+		std::sort( shaders.begin(), shaders.end(),
+			[]( const ShaderEntry& lhs, const ShaderEntry& rhs ) {
+				return lhs.name < rhs.name;
+			}
+		);
+
+		ShaderProgramDescriptor desc;
+		std::string combinedShaderText;
+		std::vector<ShaderDescriptor*> buildQueue;
+		buildQueue.reserve( shaders.size() );
+
+		for ( const ShaderEntry& shader : shaders ) {
+			std::vector<ShaderDescriptor>::iterator shaderIt = std::find_if( shaderDescriptors.begin(), shaderDescriptors.end(),
+				[&]( const ShaderDescriptor& other ) {
+					return shader.type == other.type && shader.macro == other.macro && shader.name == other.name;
+				}
+			);
+
+			if ( shaderIt == shaderDescriptors.end() ) {
+				ThrowShaderError( Str::Format( "Shader not found: %s %u", shader.name, shader.macro ) );
+			}
+
+			buildQueue.emplace_back( &*shaderIt );
+
+			combinedShaderText += shaderIt->shaderSource;
+		}
+
+		desc.checkSum = Com_BlockChecksum( combinedShaderText.c_str(), combinedShaderText.length() );
+
+		if ( !LoadShaderBinary( shaders, mainShader, &desc ) ) {
+			for ( ShaderDescriptor* shader : buildQueue ) {
+				BuildShader( shader );
+				desc.AttachShader( &*shader );
+			}
+			BuildShaderProgram( &desc );
+			SaveShaderBinary( &desc );
+		}
+
+		shaderProgramDescriptors.emplace_back( desc );
+
+		return &shaderProgramDescriptors[shaderProgramDescriptors.size() - 1];
+	}
+
+	return &*it;
+}
+
+bool GLShaderManager::BuildPermutation( GLShader* shader, int macroIndex, int deformIndex ) {
+	size_t i = macroIndex + ( deformIndex << shader->_compileMacros.size() );
+
+	std::string compileMacros;
+	if ( !shader->GetCompileMacrosString( i, compileMacros, GLCompileMacro::VERTEX | GLCompileMacro::FRAGMENT ) ) {
+		return false;
+	}
+
+	if ( IsUnusedPermutation( compileMacros.c_str() ) ) {
+		return false;
+	}
+
+	// Program already exists
+	if ( i < shader->shaderPrograms.size() &&
+		shader->shaderPrograms[i].id ) {
+		return false;
+	}
+
+	Log::Debug( "Building %s shader permutation with macro: %s",
+		shader->GetName(),
+		compileMacros.empty() ? "none" : compileMacros );
+
+	const int start = Sys::Milliseconds();
+
+	if ( i >= shader->shaderPrograms.size() ) {
+		shader->shaderPrograms.resize( ( deformIndex + 1 ) << shader->_compileMacros.size() );
+	}
+
+	ShaderProgramDescriptor* program;
+
+	std::vector<ShaderEntry> shaders;
+	if ( shader->_hasVertexShader ) {
+		const uint32_t macros = shader->GetUniqueCompileMacros( macroIndex, GLCompileMacro::VERTEX );
+		shaders.emplace_back( ShaderEntry{ shader->_name, macros, GL_VERTEX_SHADER } );
+		shaders.emplace_back( ShaderEntry{ GetDeformShaderName( deformIndex ), 0, GL_VERTEX_SHADER } );
+	}
+	if ( shader->_hasFragmentShader ) {
+		const uint32_t macros = shader->GetUniqueCompileMacros( macroIndex, GLCompileMacro::FRAGMENT );
+		shaders.emplace_back( ShaderEntry{ shader->_name, macros, GL_FRAGMENT_SHADER } );
+	}
+	if ( shader->_hasComputeShader ) {
+		shaders.emplace_back( ShaderEntry{ shader->_name, 0, GL_COMPUTE_SHADER } );
+	}
+
+	program = FindShaderProgram( shaders, shader->_name );
+
+	UpdateShaderProgramUniformLocations( shader, program );
+	GL_BindProgram( program );
+	shader->SetShaderProgramUniforms( program );
+	GL_BindNullProgram();
+
+	// Copy this for a fast look-up, but the values held in program aren't supposed to change after
+	shader->shaderPrograms[i] = *program;
+
+	GL_CheckErrors();
+
+	Log::Debug( "Built in: %i ms", Sys::Milliseconds() - start );
 
 	return true;
 }
 
-void GLShaderManager::buildAll()
-{
+void GLShaderManager::BuildAll() {
 	int startTime = Sys::Milliseconds();
 	int count = 0;
+	compileTime = 0;
+	compileCount = 0;
+	linkTime = 0;
+	linkCount = 0;
 
-	while ( !_shaderBuildQueue.empty() )
-	{
-		GLShader& shader = *_shaderBuildQueue.front();
+	while ( !_shaderBuildQueue.empty() ) {
+		GLShader* shader = _shaderBuildQueue.front();
 
-		std::string shaderName = shader.GetMainShaderName();
+		std::string shaderName = shader->GetMainShaderName();
 
-		size_t numPermutations = static_cast<size_t>(1) << shader.GetNumOfCompiledMacros();
-		size_t i;
+		size_t numPermutations = static_cast<size_t>( 1 ) << shader->GetNumOfCompiledMacros();
 
-		for( i = 0; i < numPermutations; i++ )
-		{
-			count += +buildPermutation( &shader, i, 0 );
+		for( size_t i = 0; i < numPermutations; i++ ) {
+			count += +BuildPermutation( shader, i, 0 );
 		}
 
 		_shaderBuildQueue.pop();
 	}
 
 	// doesn't include deform vertex shaders, those are built elsewhere!
-	Log::Notice( "built %d glsl shaders in %d msec", count, Sys::Milliseconds() - startTime );
+	Log::Notice( "Built %u glsl shader programs in %i ms (compile: %u in %i ms, link: %u in %i ms, init: %u in %i ms;"
+		" cache: loaded %u in %i ms, saved %u in %i ms)",
+		count, Sys::Milliseconds() - startTime,
+		compileCount, compileTime, linkCount, linkTime, initCount, initTime,
+		cacheLoadCount, cacheLoadTime, cacheSaveCount, cacheSaveTime );
 }
 
-std::string GLShaderManager::ProcessInserts( const std::string& shaderText, const uint32_t offset ) const {
+std::string GLShaderManager::ProcessInserts( const std::string& shaderText ) const {
 	std::string out;
 	std::istringstream shaderTextStream( shaderText );
 
 	std::string line;
 	int insertCount = 0;
-	int lineCount = offset;
+	int lineCount = 0;
 
 	while ( std::getline( shaderTextStream, line, '\n' ) ) {
 		++lineCount;
@@ -1059,8 +1240,64 @@ std::string GLShaderManager::ProcessInserts( const std::string& shaderText, cons
 	return out;
 }
 
+ShaderDescriptor* GLShaderManager::FindShader( const std::string& name, const std::string& mainText,
+	const GLenum type, const std::vector<GLHeader*>& headers,
+	const uint32_t macro, const std::string& compileMacros, const bool main ) {
+
+	ShaderDescriptor desc{ name, compileMacros, macro, type, main };
+	const std::vector<ShaderDescriptor>::iterator it = std::find_if( shaderDescriptors.begin(), shaderDescriptors.end(),
+		[&]( const ShaderDescriptor& other ) {
+			return desc.type == other.type && desc.macro == other.macro && desc.name == other.name;
+		}
+	);
+
+	if ( it != shaderDescriptors.end() ) {
+		return nullptr;
+	}
+
+	std::string combinedShaderText = BuildShaderText( mainText, headers, compileMacros );
+	combinedShaderText = ProcessInserts( combinedShaderText );
+
+	desc.shaderSource = combinedShaderText;
+
+	shaderDescriptors.emplace_back( desc );
+
+	return &shaderDescriptors.back();
+}
+
+std::string GLShaderManager::BuildShaderText( const std::string& mainShaderText, const std::vector<GLHeader*>& headers,
+	const std::string& macros ) {
+	std::string combinedText;
+
+	uint32_t count = 0;
+	for ( GLHeader* header : headers ) {
+		count += header->getText().size();
+	}
+
+	combinedText.reserve( count );
+
+	for ( GLHeader* header : headers ) {
+		combinedText += header->getText();
+	}
+
+	const char* compileMacrosP = macros.c_str();
+	while ( true ) {
+		const char* token = COM_ParseExt2( &compileMacrosP, false );
+
+		if ( !token[0] ) {
+			break;
+		}
+
+		combinedText += Str::Format( "#ifndef %s\n#define %s 1\n#endif\n", token, token );
+	}
+
+	combinedText += mainShaderText;
+
+	return combinedText;
+}
+
 void GLShaderManager::InitShader( GLShader* shader ) {
-	shader->_shaderPrograms = std::vector<shaderProgram_t>( static_cast< size_t >( 1 ) << shader->_compileMacros.size() );
+	const int start = Sys::Milliseconds();
 
 	shader->PostProcessUniforms();
 
@@ -1077,310 +1314,244 @@ void GLShaderManager::InitShader( GLShader* shader ) {
 		uniformBlock->SetLocationIndex( i );
 	}
 
+	struct ShaderType {
+		bool enabled;
+		int type;
+		GLenum GLType;
+
+		const char* postfix;
+		uint32_t offset;
+		std::vector<GLHeader*> headers;
+
+		std::string path = "";
+		std::string mainText = "";
+	};
+
+	ShaderType shaderTypes[] = {
+		{ shader->_hasVertexShader, GLCompileMacro::VERTEX, GL_VERTEX_SHADER, "_vp",
+			uint32_t( GLVersionDeclaration.getText().size() ),
+			{ &GLVersionDeclaration, &GLCompatHeader, &GLEngineConstants, &GLVertexHeader } },
+		{ shader->_hasFragmentShader, GLCompileMacro::FRAGMENT, GL_FRAGMENT_SHADER, "_fp",
+			uint32_t( GLVersionDeclaration.getText().size() ),
+			{ &GLVersionDeclaration, &GLCompatHeader, &GLEngineConstants, &GLFragmentHeader } },
+		{ shader->_hasComputeShader, GLCompileMacro::COMPUTE, GL_COMPUTE_SHADER, "_cp",
+			uint32_t( GLComputeVersionDeclaration.getText().size() ),
+			{ &GLComputeVersionDeclaration, &GLCompatHeader, &GLEngineConstants, &GLComputeHeader, &GLWorldHeader } }
+	};
+
 	char filename[MAX_QPATH];
-	if ( shader->_hasVertexShader ) {
-		Com_sprintf( filename, sizeof( filename ), "%s_vp.glsl", shader->GetMainShaderName().c_str() );
-		shader->_vertexShaderText = GetShaderText( filename );
+	for ( ShaderType& shaderType : shaderTypes ) {
+		if ( shaderType.enabled ) {
+			Com_sprintf( filename, sizeof( filename ), "%s%s.glsl", shader->GetMainShaderName().c_str(), shaderType.postfix );
 
-		const uint32_t offset =
-			GLVersionDeclaration.getLineCount()
-			+ GLCompatHeader.getLineCount()
-			+ GLEngineConstants.getLineCount()
-			+ GLVertexHeader.getLineCount();
-		shader->_vertexShaderText = ProcessInserts( shader->_vertexShaderText, offset );
-	}
-	if ( shader->_hasFragmentShader ) {
-		Com_sprintf( filename, sizeof( filename ), "%s_fp.glsl", shader->GetMainShaderName().c_str() );
-		shader->_fragmentShaderText = GetShaderText( filename );
-
-		const uint32_t offset =
-			GLVersionDeclaration.getLineCount()
-			+ GLCompatHeader.getLineCount()
-			+ GLEngineConstants.getLineCount()
-			+ GLFragmentHeader.getLineCount();
-		shader->_fragmentShaderText = ProcessInserts( shader->_fragmentShaderText, offset );
-	}
-	if ( shader->_hasComputeShader ) {
-		Com_sprintf( filename, sizeof( filename ), "%s_cp.glsl", shader->GetMainShaderName().c_str() );
-		shader->_computeShaderText = GetShaderText( filename );
-
-		const uint32_t offset =
-			GLComputeVersionDeclaration.getLineCount()
-			+ GLCompatHeader.getLineCount()
-			+ GLEngineConstants.getLineCount()
-			+ GLComputeHeader.getLineCount()
-			+ GLWorldHeader.getLineCount();
-		shader->_computeShaderText = ProcessInserts( shader->_computeShaderText, offset );
+			shaderType.path = filename;
+			shaderType.mainText = GetShaderText( filename );
+		}
 	}
 
-	if ( glConfig2.usingMaterialSystem && shader->_useMaterialSystem ) {
-		shader->_vertexShaderText = ShaderPostProcess( shader, shader->_vertexShaderText );
-		shader->_fragmentShaderText = ShaderPostProcess( shader, shader->_fragmentShaderText );
+	for ( int i = 0; i < BIT( shader->GetNumOfCompiledMacros() ); i++ ) {
+		for ( ShaderType& shaderType : shaderTypes ) {
+			if ( !shaderType.enabled ) {
+				continue;
+			}
+
+			std::string compileMacros;
+			if ( !shader->GetCompileMacrosString( i, compileMacros, shaderType.type ) ) {
+				continue;
+			}
+
+			if ( IsUnusedPermutation( compileMacros.c_str() ) ) {
+				continue;
+			}
+
+			shader->BuildShaderCompileMacros( compileMacros );
+
+			const uint32_t uniqueMacros = shader->GetUniqueCompileMacros( i, shaderType.type );
+
+			ShaderDescriptor* desc = FindShader( shader->_name, shaderType.mainText, shaderType.GLType, shaderType.headers,
+				uniqueMacros, compileMacros, true );
+
+			if ( desc && glConfig2.usingMaterialSystem && shader->_useMaterialSystem ) {
+				desc->shaderSource = ShaderPostProcess( shader, desc->shaderSource, shaderType.offset );
+			}
+
+			initCount++;
+		}
 	}
 
-	std::string combinedShaderText;
-	if ( shader->_hasVertexShader || shader->_hasFragmentShader ) {
-		combinedShaderText =
-			GLVersionDeclaration.getText()
-			+ GLCompatHeader.getText()
-			+ GLEngineConstants.getText()
-			+ GLVertexHeader.getText()
-			+ GLFragmentHeader.getText();
-	} else if ( shader->_hasComputeShader ) {
-		combinedShaderText =
-			GLComputeVersionDeclaration.getText()
-			+ GLCompatHeader.getText()
-			+ GLEngineConstants.getText()
-			+ GLComputeHeader.getText()
-			+ GLWorldHeader.getText();
-	}
-
-	if ( shader->_hasVertexShader ) {
-		combinedShaderText += shader->_vertexShaderText;
-	}
-	if ( shader->_hasFragmentShader ) {
-		combinedShaderText += shader->_fragmentShaderText;
-	}
-	if ( shader->_hasComputeShader ) {
-		combinedShaderText += shader->_computeShaderText;
-	}
-
-	shader->_checkSum = Com_BlockChecksum( combinedShaderText.c_str(), combinedShaderText.length() );
+	initTime += Sys::Milliseconds() - start;
 }
 
-bool GLShaderManager::LoadShaderBinary( GLShader *shader, size_t programNum )
-{
-#ifdef GL_ARB_get_program_binary
-	GLint          success;
-	const byte    *binaryptr;
-	GLBinaryHeader shaderHeader;
-
-	if ( !r_glslCache.Get() )
+bool GLShaderManager::LoadShaderBinary( const std::vector<ShaderEntry>& shaders, const std::string& mainShader,
+	ShaderProgramDescriptor* descriptor ) {
+	if ( !r_glslCache.Get() ) {
 		return false;
+	}
 
-	if (!GetShaderPath().empty())
+	if ( !GetShaderPath().empty() ) {
 		return false;
+	}
 
-	// don't even try if the necessary functions aren't available
-	if( !glConfig2.getProgramBinaryAvailable )
+	// Don't even try if the necessary functions aren't available
+	if ( !glConfig2.getProgramBinaryAvailable ) {
 		return false;
+	}
 
-	if (_shaderBinaryCacheInvalidated)
+	if ( _shaderBinaryCacheInvalidated ) {
 		return false;
+	}
+
+	const int start = Sys::Milliseconds();
 
 	std::error_code err;
 
-	std::string shaderFilename = Str::Format("glsl/%s/%s_%u.bin", shader->GetName(), shader->GetName(), (unsigned int)programNum);
-	FS::File shaderFile = FS::HomePath::OpenRead(shaderFilename, err);
-	if (err)
+	std::string secondaryName;
+	for ( const ShaderEntry& shader : shaders ) {
+		if ( shader.name != mainShader ) {
+			secondaryName += Str::Format( "%s_%u_%u", shader.name, shader.macro, shader.type );
+		} else {
+			secondaryName += Str::Format( "%u_%u_", shader.macro, shader.type );
+		}
+	}
+
+	std::string shaderFilename = Str::Format( "glsl/%s/%s.bin", mainShader, secondaryName );
+	FS::File shaderFile = FS::HomePath::OpenRead( shaderFilename, err );
+	if ( err ) {
 		return false;
+	}
 
-	std::string shaderData = shaderFile.ReadAll(err);
-	if (err)
+	GLint success;
+	const byte *binaryptr;
+	GLBinaryHeader shaderHeader;
+	std::string shaderData = shaderFile.ReadAll( err );
+	if ( err ) {
 		return false;
+	}
 
-	if (shaderData.size() < sizeof(shaderHeader))
+	if ( shaderData.size() < sizeof( shaderHeader ) ) {
 		return false;
+	}
 
-	binaryptr = reinterpret_cast<const byte*>(shaderData.data());
+	binaryptr = reinterpret_cast<const byte*>( shaderData.data() );
 
-	// get the shader header from the file
+	// Get the shader header from the file
 	memcpy( &shaderHeader, binaryptr, sizeof( shaderHeader ) );
 	binaryptr += sizeof( shaderHeader );
 
-	// check if the header struct is the correct format
-	// and the binary was produced by the same gl driver
-	if (shaderHeader.version != GL_SHADER_VERSION || shaderHeader.driverVersionHash != _driverVersionHash)
-	{
-		// These two fields should be the same for all shaders. So if there is a mismatch,
-		// don't bother opening any of the remaining files.
-		Log::Notice("Invalidating shader binary cache");
+	/* Check if the header struct is the correct format
+	and the binary was produced by the same GL driver */
+	if ( shaderHeader.version != GL_SHADER_VERSION /* || shaderHeader.driverVersionHash != _driverVersionHash */ ) {
+		/* These two fields should be the same for all shaders. So if there is a mismatch,
+		don't bother opening any of the remaining files.
+		I've disabled the cache invalidation on driver version change, because we now also cache shader programs that use
+		non-empty deformVertexes. This would mean that after updating the driver, any time you load a new map with
+		deformVertexes, it would cause the rebuild of *all* shaders */
+		Log::Notice( "Invalidating shader binary cache" );
 		_shaderBinaryCacheInvalidated = true;
 		return false;
 	}
 
-	// make sure this shader uses the same number of macros
-	if ( shaderHeader.numMacros != shader->GetNumOfCompiledMacros() )
+	// Make sure the checksums for the source code match
+	if ( shaderHeader.checkSum != descriptor->checkSum ) {
 		return false;
-
-	// make sure this shader uses the same macros
-	for ( unsigned int i = 0; i < shaderHeader.numMacros; i++ )
-	{
-		if ( shader->_compileMacros[ i ]->GetType() != shaderHeader.macros[ i ] )
-			return false;
 	}
 
-	// make sure the checksums for the source code match
-	if ( shaderHeader.checkSum != shader->_checkSum )
-		return false;
-
-	if ( shaderHeader.binaryLength != shaderData.size() - sizeof( shaderHeader ) )
-	{
+	if ( shaderHeader.binaryLength != shaderData.size() - sizeof( shaderHeader ) ) {
 		Log::Warn( "Shader cache %s has wrong size", shaderFilename );
 		return false;
 	}
 
-	// load the shader
-	shaderProgram_t *shaderProgram = &shader->_shaderPrograms[ programNum ];
-	shaderProgram->program = glCreateProgram();
-	glProgramBinary( shaderProgram->program, shaderHeader.binaryFormat, binaryptr, shaderHeader.binaryLength );
-	glGetProgramiv( shaderProgram->program, GL_LINK_STATUS, &success );
+	// Load the shader program
+	descriptor->id = glCreateProgram();
+	glProgramBinary( descriptor->id, shaderHeader.binaryFormat, binaryptr, shaderHeader.binaryLength );
+	glGetProgramiv( descriptor->id, GL_LINK_STATUS, &success );
 
-	if ( !success )
+	if ( !success ) {
 		return false;
+	}
+
+	for ( const ShaderEntry& shader : shaders ) {
+		descriptor->shaderNames[descriptor->shaderCount] = shader;
+		descriptor->shaderCount++;
+	}
+
+	cacheLoadTime += Sys::Milliseconds() - start;
+	cacheLoadCount++;
 
 	return true;
-#else
-	return false;
-#endif
 }
-void GLShaderManager::SaveShaderBinary( GLShader *shader, size_t programNum )
-{
-#ifdef GL_ARB_get_program_binary
-	GLint                 binaryLength;
-	GLuint                binarySize = 0;
-	byte                  *binary;
-	byte                  *binaryptr;
-	GLBinaryHeader        shaderHeader{}; // Zero init.
-	shaderProgram_t       *shaderProgram;
 
-	if ( !r_glslCache.Get() )
-		return;
-
-	if (!GetShaderPath().empty())
-		return;
-
-	// don't even try if the necessary functions aren't available
-	if( !glConfig2.getProgramBinaryAvailable )
-	{
+void GLShaderManager::SaveShaderBinary( ShaderProgramDescriptor* descriptor ) {
+	if ( !r_glslCache.Get() ) {
 		return;
 	}
 
-	shaderProgram = &shader->_shaderPrograms[ programNum ];
+	if ( !GetShaderPath().empty() ) {
+		return;
+	}
 
-	// find output size
-	binarySize += sizeof( shaderHeader );
-	glGetProgramiv( shaderProgram->program, GL_PROGRAM_BINARY_LENGTH, &binaryLength );
+	// Don't even try if the necessary functions aren't available
+	if( !glConfig2.getProgramBinaryAvailable ) {
+		return;
+	}
+
+	const int start = Sys::Milliseconds();
+
+	// Find output size
+	GLBinaryHeader shaderHeader{};
+	GLuint binarySize = sizeof( shaderHeader );
+	GLint binaryLength;
+	glGetProgramiv( descriptor->id, GL_PROGRAM_BINARY_LENGTH, &binaryLength );
 
 	// The binary length may be 0 if there is an error.
-	if ( binaryLength <= 0 )
-	{
+	if ( binaryLength <= 0 ) {
 		return;
 	}
 
 	binarySize += binaryLength;
 
+	byte* binary;
+	byte* binaryptr;
 	binaryptr = binary = ( byte* )ri.Hunk_AllocateTempMemory( binarySize );
 
-	// reserve space for the header
+	// Reserve space for the header
 	binaryptr += sizeof( shaderHeader );
 
-	// get the program binary and write it to the buffer
-	glGetProgramBinary( shaderProgram->program, binaryLength, nullptr, &shaderHeader.binaryFormat, binaryptr );
+	// Get the program binary and write it to the buffer
+	glGetProgramBinary( descriptor->id, binaryLength, nullptr, &shaderHeader.binaryFormat, binaryptr );
 
-	// set the header
+	// Set the header
 	shaderHeader.version = GL_SHADER_VERSION;
-	shaderHeader.numMacros = shader->_compileMacros.size();
-
-	for ( unsigned int i = 0; i < shaderHeader.numMacros; i++ )
-	{
-		shaderHeader.macros[ i ] = shader->_compileMacros[ i ]->GetType();
-	}
 
 	shaderHeader.binaryLength = binaryLength;
-	shaderHeader.checkSum = shader->_checkSum;
+	shaderHeader.checkSum = descriptor->checkSum;
 	shaderHeader.driverVersionHash = _driverVersionHash;
 
-	// write the header to the buffer
-	memcpy(binary, &shaderHeader, sizeof( shaderHeader ) );
+	// Write the header to the buffer
+	memcpy( binary, &shaderHeader, sizeof( shaderHeader ) );
 
-	auto fileName = Str::Format("glsl/%s/%s_%u.bin", shader->GetName(), shader->GetName(), (unsigned int)programNum);
-	ri.FS_WriteFile(fileName.c_str(), binary, binarySize);
+	std::string secondaryName;
+	for ( uint32_t i = 0; i < descriptor->shaderCount; i++ ) {
+		const ShaderEntry& shader = descriptor->shaderNames[i];
+		if ( shader.name != descriptor->mainShader || !descriptor->hasMain ) {
+			secondaryName += Str::Format( "%s_%u_%u", shader.name, shader.macro, shader.type );
+		} else {
+			secondaryName += Str::Format( "%u_%u_", shader.macro, shader.type );
+		}
+	}
+
+	std::string name = descriptor->hasMain ? descriptor->mainShader : "unknown";
+	auto fileName = Str::Format( "glsl/%s/%s.bin", name, secondaryName );
+	ri.FS_WriteFile( fileName.c_str(), binary, binarySize );
 
 	ri.Hunk_FreeTempMemory( binary );
-#endif
-}
 
-void GLShaderManager::CompileGPUShaders( GLShader *shader, shaderProgram_t *program,
-					 const std::string &compileMacros )
-{
-	// permutation macros
-	std::string macrosString;
-
-	const char* compileMacrosP = compileMacros.c_str();
-	while ( true )
-	{
-		const char *token = COM_ParseExt2( &compileMacrosP, false );
-
-		if ( !token[ 0 ] )
-		{
-			break;
-		}
-
-		macrosString += Str::Format( "#ifndef %s\n#define %s 1\n#endif\n", token, token );
-	}
-
-	Log::Debug( "building %s shader permutation with macro: %s",
-		shader->GetMainShaderName(),
-		compileMacros.empty() ? "none" : compileMacros );
-
-	// add them
-	std::string vertexShaderTextWithMacros = macrosString + shader->_vertexShaderText;
-	std::string fragmentShaderTextWithMacros = macrosString + shader->_fragmentShaderText;
-	std::string computeShaderTextWithMacros = macrosString + shader->_computeShaderText;
-	if( shader->_hasVertexShader ) {
-		program->VS = CompileShader( shader->GetName(),
-						 vertexShaderTextWithMacros,
-						 { &GLVersionDeclaration,
-						   &GLCompatHeader,
-						   &GLEngineConstants,
-						   &GLVertexHeader },
-						 GL_VERTEX_SHADER );
-	}
-	if ( shader->_hasFragmentShader ) {
-		program->FS = CompileShader( shader->GetName(),
-						 fragmentShaderTextWithMacros,
-						 { &GLVersionDeclaration,
-						   &GLCompatHeader,
-						   &GLEngineConstants,
-						   &GLFragmentHeader },
-						 GL_FRAGMENT_SHADER );
-	}
-	if ( shader->_hasComputeShader ) {
-		program->CS = CompileShader( shader->GetName(),
-						 computeShaderTextWithMacros,
-						 { &GLComputeVersionDeclaration,
-						   &GLCompatHeader,
-						   &GLComputeHeader,
-						   &GLEngineConstants,
-						   &GLWorldHeader },
-						 GL_COMPUTE_SHADER );
-	}
-}
-
-void GLShaderManager::CompileAndLinkGPUShaderProgram( GLShader *shader, shaderProgram_t *program,
-						      Str::StringRef compileMacros, int deformIndex )
-{
-	GLShaderManager::CompileGPUShaders( shader, program, compileMacros );
-
-	program->program = glCreateProgram();
-	if ( shader->_hasVertexShader ) {
-		glAttachShader( program->program, program->VS );
-		glAttachShader( program->program, _deformShaders[ deformIndex ] );
-	}
-	if ( shader->_hasFragmentShader ) {
-		glAttachShader( program->program, program->FS );
-	}
-	if ( shader->_hasComputeShader ) {
-		glAttachShader( program->program, program->CS );
-	}
-
-	BindAttribLocations( program->program );
-	LinkProgram( program->program );
+	cacheSaveTime += Sys::Milliseconds() - start;
+	cacheSaveCount++;
 }
 
 // This will generate all the extra code for material system shaders
-std::string GLShaderManager::ShaderPostProcess( GLShader *shader, const std::string& shaderText ) {
+std::string GLShaderManager::ShaderPostProcess( GLShader *shader, const std::string& shaderText, const uint32_t offset ) {
 	if ( !shader->std430Size ) {
 		return shaderText;
 	}
@@ -1530,64 +1701,9 @@ std::string GLShaderManager::ShaderPostProcess( GLShader *shader, const std::str
 
 	materialDefines += "\n";
 
-	newShaderText = "#define USE_MATERIAL_SYSTEM\n" + materialStruct + materialBlock + texDataBlock + materialDefines + shaderMain;
-	return newShaderText;
-}
-
-GLuint GLShaderManager::CompileShader( Str::StringRef programName,
-				       Str::StringRef shaderText,
-				       std::initializer_list<const GLHeader *> headers,
-				       GLenum shaderType ) const
-{
-	GLuint shader = glCreateShader( shaderType );
-	std::vector<const GLchar*> texts(headers.size() + 1);
-	std::vector<GLint> lengths(headers.size() + 1);
-	int i;
-
-	i = 0;
-	for(const GLHeader *hdr : headers) {
-	  texts[i++] = hdr->getText().data();
-	}
-	texts[i++] = shaderText.data();
-
-	i = 0;
-	for(const GLHeader *hdr : headers) {
-	  lengths[i++] = (GLint)hdr->getText().size();
-	}
-	lengths[i++] = (GLint)shaderText.size();
-
-	GL_CheckErrors();
-
-	glShaderSource( shader, i, texts.data(), lengths.data() );
-
-	// compile shader
-	glCompileShader( shader );
-
-	GL_CheckErrors();
-
-	// check if shader compiled
-	GLint compiled;
-	glGetShaderiv( shader, GL_COMPILE_STATUS, &compiled );
-
-	if ( !compiled )
-	{
-		std::string log = GetInfoLog( shader );
-		std::vector<InfoLogEntry> infoLog = ParseInfoLog( log );
-		PrintShaderSource( programName, shader, infoLog );
-		Log::Warn( "Compile log:\n%s", log );
-		switch ( shaderType ) {
-			case GL_VERTEX_SHADER:
-				ThrowShaderError( Str::Format( "Couldn't compile vertex shader: %s", programName ) );
-			case GL_FRAGMENT_SHADER:
-				ThrowShaderError( Str::Format( "Couldn't compile fragment shader: %s", programName ) );
-			case GL_COMPUTE_SHADER:
-				ThrowShaderError( Str::Format( "Couldn't compile compute shader: %s", programName ) );
-			default:
-				break;
-		}
-	}
-
-	return shader;
+	newShaderText = "#define USE_MATERIAL_SYSTEM\n" + materialStruct + materialBlock + texDataBlock + materialDefines; // + shaderMain;
+	shaderMain.insert( offset, newShaderText );
+	return shaderMain;
 }
 
 void GLShaderManager::PrintShaderSource( Str::StringRef programName, GLuint object, std::vector<InfoLogEntry>& infoLog ) const
@@ -2037,8 +2153,8 @@ void GLShader::RegisterUniform( GLUniform* uniform ) {
 }
 
 GLint GLShader::GetUniformLocation( const GLchar *uniformName ) const {
-	shaderProgram_t* p = GetProgram();
-	return glGetUniformLocation( p->program, uniformName );
+	ShaderProgramDescriptor* p = GetProgram();
+	return glGetUniformLocation( p->id, uniformName );
 }
 
 // Compute std430 size/alignment and sort uniforms from highest to lowest alignment
@@ -2100,22 +2216,45 @@ void GLShader::PostProcessUniforms() {
 	}
 }
 
-bool GLShader::GetCompileMacrosString( size_t permutation, std::string &compileMacrosOut ) const
-{
+uint32_t GLShader::GetUniqueCompileMacros( size_t permutation, const int type ) const {
+	uint32_t macroOut = 0;
+	for ( const GLCompileMacro* macro : _compileMacros ) {
+		if ( permutation & macro->GetBit() ) {
+			if ( macro->HasConflictingMacros( permutation, _compileMacros ) ) {
+				continue;
+			}
+
+			if ( macro->MissesRequiredMacros( permutation, _compileMacros ) ) {
+				continue;
+			}
+
+			if ( !( macro->GetShaderTypes() & type ) ) {
+				continue;
+			}
+
+			macroOut |= BIT( macro->GetType() );
+		}
+	}
+
+	return macroOut;
+}
+
+bool GLShader::GetCompileMacrosString( size_t permutation, std::string &compileMacrosOut, const int type ) const {
 	compileMacrosOut.clear();
 
-	for (const GLCompileMacro* macro : _compileMacros)
-	{
-		if ( permutation & macro->GetBit() )
-		{
-			if ( macro->HasConflictingMacros( permutation, _compileMacros ) )
-			{
-				//Log::Notice("conflicting macro! canceling '%s'", macro->GetName());
+	for ( const GLCompileMacro* macro : _compileMacros ) {
+		if ( permutation & macro->GetBit() ) {
+			if ( macro->HasConflictingMacros( permutation, _compileMacros ) ) {
 				return false;
 			}
 
-			if ( macro->MissesRequiredMacros( permutation, _compileMacros ) )
+			if ( macro->MissesRequiredMacros( permutation, _compileMacros ) ) {
 				return false;
+			}
+
+			if ( !( macro->GetShaderTypes() & type ) ) {
+				return false;
+			}
 
 			compileMacrosOut += macro->GetName();
 			compileMacrosOut += " ";
@@ -2148,12 +2287,12 @@ GLuint GLShader::GetProgram( int deformIndex ) {
 
 	// program may not be loaded yet because the shader manager hasn't yet gotten to it
 	// so try to load it now
-	if ( index >= _shaderPrograms.size() || !_shaderPrograms[index].program ) {
-		_shaderManager->buildPermutation( this, macroIndex, deformIndex );
+	if ( index >= shaderPrograms.size() || !shaderPrograms[index].id ) {
+		_shaderManager->BuildPermutation( this, macroIndex, deformIndex );
 	}
 
 	// program is still not loaded
-	if ( index >= _shaderPrograms.size() || !_shaderPrograms[index].program ) {
+	if ( index >= shaderPrograms.size() || !shaderPrograms[index].id ) {
 		std::string activeMacros;
 		size_t      numMacros = _compileMacros.size();
 
@@ -2171,23 +2310,22 @@ GLuint GLShader::GetProgram( int deformIndex ) {
 		ThrowShaderError( Str::Format( "Invalid shader configuration: shader = '%s', macros = '%s'", _name, activeMacros ) );
 	}
 
-	return _shaderPrograms[index].program;
+	return shaderPrograms[index].id;
 }
 
-void GLShader::BindProgram( int deformIndex )
-{
+void GLShader::BindProgram( int deformIndex ) {
 	int macroIndex = SelectProgram();
 	size_t index = macroIndex + ( size_t(deformIndex) << _compileMacros.size() );
 
 	// program may not be loaded yet because the shader manager hasn't yet gotten to it
 	// so try to load it now
-	if ( index >= _shaderPrograms.size() || !_shaderPrograms[ index ].program )
+	if ( index >= shaderPrograms.size() || !shaderPrograms[index].id )
 	{
-		_shaderManager->buildPermutation( this, macroIndex, deformIndex );
+		_shaderManager->BuildPermutation( this, macroIndex, deformIndex );
 	}
 
 	// program is still not loaded
-	if ( index >= _shaderPrograms.size() || !_shaderPrograms[ index ].program )
+	if ( index >= shaderPrograms.size() || !shaderPrograms[index].id )
 	{
 		std::string activeMacros;
 
@@ -2203,29 +2341,28 @@ void GLShader::BindProgram( int deformIndex )
 		ThrowShaderError(Str::Format("Invalid shader configuration: shader = '%s', macros = '%s'", _name, activeMacros ));
 	}
 
-	_currentProgram = &_shaderPrograms[ index ];
+	currentProgram = &shaderPrograms[index];
 
-	if ( r_logFile->integer )
-	{
+	if ( r_logFile->integer ) {
 		std::string macros;
 
-		this->GetCompileMacrosString( index, macros );
+		GetCompileMacrosString( index, macros, GLCompileMacro::VERTEX | GLCompileMacro::FRAGMENT );
 
-		auto msg = Str::Format("--- GL_BindProgram( name = '%s', macros = '%s' ) ---\n", this->GetName(), macros);
-		GLimp_LogComment(msg.c_str());
+		auto msg = Str::Format( "--- GL_BindProgram( name = '%s', macros = '%s' ) ---\n", this->GetName(), macros );
+		GLimp_LogComment( msg.c_str() );
 	}
 
-	GL_BindProgram( _currentProgram );
+	GL_BindProgram( &shaderPrograms[index] );
 }
 
 void GLShader::DispatchCompute( const GLuint globalWorkgroupX, const GLuint globalWorkgroupY, const GLuint globalWorkgroupZ ) {
-	ASSERT_EQ( _currentProgram, glState.currentProgram );
+	ASSERT_EQ( currentProgram, glState.currentProgram );
 	ASSERT( _hasComputeShader );
 	glDispatchCompute( globalWorkgroupX, globalWorkgroupY, globalWorkgroupZ );
 }
 
 void GLShader::DispatchComputeIndirect( const GLintptr indirectBuffer ) {
-	ASSERT_EQ( _currentProgram, glState.currentProgram );
+	ASSERT_EQ( currentProgram, glState.currentProgram );
 	ASSERT( _hasComputeShader );
 	glDispatchComputeIndirect( indirectBuffer );
 }
@@ -2281,10 +2418,10 @@ GLShader_generic::GLShader_generic( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_generic::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_generic::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ColorMap" ), 0 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_DepthMap" ), 1 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ColorMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_DepthMap" ), 1 );
 }
 
 GLShader_genericMaterial::GLShader_genericMaterial( GLShaderManager* manager ) :
@@ -2310,9 +2447,9 @@ GLShader_genericMaterial::GLShader_genericMaterial( GLShaderManager* manager ) :
 	GLCompileMacro_USE_DEPTH_FADE( this ) {
 }
 
-void GLShader_genericMaterial::SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ColorMap" ), 0 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_DepthMap" ), 1 );
+void GLShader_genericMaterial::SetShaderProgramUniforms( ShaderProgramDescriptor* shaderProgram ) {
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ColorMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_DepthMap" ), 1 );
 }
 
 GLShader_lightMapping::GLShader_lightMapping( GLShaderManager *manager ) :
@@ -2364,22 +2501,22 @@ GLShader_lightMapping::GLShader_lightMapping( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_lightMapping::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_lightMapping::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_DiffuseMap" ), BIND_DIFFUSEMAP );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_NormalMap" ), BIND_NORMALMAP );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_HeightMap" ), BIND_HEIGHTMAP );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_MaterialMap" ), BIND_MATERIALMAP );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_LightMap" ), BIND_LIGHTMAP );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_LightGrid1" ), BIND_LIGHTMAP );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_DeluxeMap" ), BIND_DELUXEMAP );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_LightGrid2" ), BIND_DELUXEMAP );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_GlowMap" ), BIND_GLOWMAP );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_EnvironmentMap0" ), BIND_ENVIRONMENTMAP0 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_EnvironmentMap1" ), BIND_ENVIRONMENTMAP1 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_LightTiles" ), BIND_LIGHTTILES );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_DiffuseMap" ), BIND_DIFFUSEMAP );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_NormalMap" ), BIND_NORMALMAP );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_HeightMap" ), BIND_HEIGHTMAP );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_MaterialMap" ), BIND_MATERIALMAP );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_LightMap" ), BIND_LIGHTMAP );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_LightGrid1" ), BIND_LIGHTMAP );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_DeluxeMap" ), BIND_DELUXEMAP );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_LightGrid2" ), BIND_DELUXEMAP );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_GlowMap" ), BIND_GLOWMAP );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_EnvironmentMap0" ), BIND_ENVIRONMENTMAP0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_EnvironmentMap1" ), BIND_ENVIRONMENTMAP1 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_LightTiles" ), BIND_LIGHTTILES );
 	if( !glConfig2.uniformBufferObjectAvailable ) {
-		glUniform1i( glGetUniformLocation( shaderProgram->program, "u_Lights" ), BIND_LIGHTS );
+		glUniform1i( glGetUniformLocation( shaderProgram->id, "u_Lights" ), BIND_LIGHTS );
 	}
 }
 
@@ -2429,19 +2566,19 @@ GLShader_lightMappingMaterial::GLShader_lightMappingMaterial( GLShaderManager* m
 	GLCompileMacro_USE_PHYSICAL_MAPPING( this ) {
 }
 
-void GLShader_lightMappingMaterial::SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_DiffuseMap" ), BIND_DIFFUSEMAP );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_NormalMap" ), BIND_NORMALMAP );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_HeightMap" ), BIND_HEIGHTMAP );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_MaterialMap" ), BIND_MATERIALMAP );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_LightMap" ), BIND_LIGHTMAP );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_DeluxeMap" ), BIND_DELUXEMAP );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_GlowMap" ), BIND_GLOWMAP );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_EnvironmentMap0" ), BIND_ENVIRONMENTMAP0 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_EnvironmentMap1" ), BIND_ENVIRONMENTMAP1 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_LightTiles" ), BIND_LIGHTTILES );
+void GLShader_lightMappingMaterial::SetShaderProgramUniforms( ShaderProgramDescriptor* shaderProgram ) {
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_DiffuseMap" ), BIND_DIFFUSEMAP );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_NormalMap" ), BIND_NORMALMAP );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_HeightMap" ), BIND_HEIGHTMAP );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_MaterialMap" ), BIND_MATERIALMAP );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_LightMap" ), BIND_LIGHTMAP );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_DeluxeMap" ), BIND_DELUXEMAP );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_GlowMap" ), BIND_GLOWMAP );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_EnvironmentMap0" ), BIND_ENVIRONMENTMAP0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_EnvironmentMap1" ), BIND_ENVIRONMENTMAP1 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_LightTiles" ), BIND_LIGHTTILES );
 	if ( !glConfig2.uniformBufferObjectAvailable ) {
-		glUniform1i( glGetUniformLocation( shaderProgram->program, "u_Lights" ), BIND_LIGHTS );
+		glUniform1i( glGetUniformLocation( shaderProgram->id, "u_Lights" ), BIND_LIGHTS );
 	}
 }
 
@@ -2485,17 +2622,17 @@ GLShader_forwardLighting_omniXYZ::GLShader_forwardLighting_omniXYZ( GLShaderMana
 {
 }
 
-void GLShader_forwardLighting_omniXYZ::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_forwardLighting_omniXYZ::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_DiffuseMap" ), 0 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_NormalMap" ), 1 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_MaterialMap" ), 2 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_AttenuationMapXY" ), 3 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_AttenuationMapZ" ), 4 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ShadowMap" ), 5 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_RandomMap" ), 6 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ShadowClipMap" ), 7 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_HeightMap" ), 15 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_DiffuseMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_NormalMap" ), 1 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_MaterialMap" ), 2 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_AttenuationMapXY" ), 3 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_AttenuationMapZ" ), 4 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ShadowMap" ), 5 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_RandomMap" ), 6 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ShadowClipMap" ), 7 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_HeightMap" ), 15 );
 }
 
 GLShader_forwardLighting_projXYZ::GLShader_forwardLighting_projXYZ( GLShaderManager *manager ):
@@ -2544,17 +2681,17 @@ void GLShader_forwardLighting_projXYZ::BuildShaderCompileMacros( std::string& co
 	compileMacros += "LIGHT_PROJ ";
 }
 
-void GLShader_forwardLighting_projXYZ::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_forwardLighting_projXYZ::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_DiffuseMap" ), 0 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_NormalMap" ), 1 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_MaterialMap" ), 2 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_AttenuationMapXY" ), 3 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_AttenuationMapZ" ), 4 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ShadowMap0" ), 5 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_RandomMap" ), 6 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ShadowClipMap0" ), 7 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_HeightMap" ), 15 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_DiffuseMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_NormalMap" ), 1 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_MaterialMap" ), 2 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_AttenuationMapXY" ), 3 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_AttenuationMapZ" ), 4 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ShadowMap0" ), 5 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_RandomMap" ), 6 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ShadowClipMap0" ), 7 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_HeightMap" ), 15 );
 }
 
 GLShader_forwardLighting_directionalSun::GLShader_forwardLighting_directionalSun( GLShaderManager *manager ):
@@ -2610,24 +2747,24 @@ void GLShader_forwardLighting_directionalSun::BuildShaderCompileMacros( std::str
 	compileMacros += "LIGHT_DIRECTIONAL ";
 }
 
-void GLShader_forwardLighting_directionalSun::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_forwardLighting_directionalSun::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_DiffuseMap" ), 0 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_NormalMap" ), 1 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_MaterialMap" ), 2 );
-	//glUniform1i(glGetUniformLocation( shaderProgram->program, "u_AttenuationMapXY" ), 3);
-	//glUniform1i(glGetUniformLocation( shaderProgram->program, "u_AttenuationMapZ" ), 4);
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ShadowMap0" ), 5 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ShadowMap1" ), 6 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ShadowMap2" ), 7 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ShadowMap3" ), 8 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ShadowMap4" ), 9 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ShadowClipMap0" ), 10 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ShadowClipMap1" ), 11 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ShadowClipMap2" ), 12 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ShadowClipMap3" ), 13 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ShadowClipMap4" ), 14 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_HeightMap" ), 15 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_DiffuseMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_NormalMap" ), 1 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_MaterialMap" ), 2 );
+	//glUniform1i(glGetUniformLocation( shaderProgram->id, "u_AttenuationMapXY" ), 3);
+	//glUniform1i(glGetUniformLocation( shaderProgram->id, "u_AttenuationMapZ" ), 4);
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ShadowMap0" ), 5 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ShadowMap1" ), 6 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ShadowMap2" ), 7 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ShadowMap3" ), 8 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ShadowMap4" ), 9 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ShadowClipMap0" ), 10 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ShadowClipMap1" ), 11 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ShadowClipMap2" ), 12 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ShadowClipMap3" ), 13 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ShadowClipMap4" ), 14 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_HeightMap" ), 15 );
 }
 
 GLShader_shadowFill::GLShader_shadowFill( GLShaderManager *manager ) :
@@ -2649,9 +2786,9 @@ GLShader_shadowFill::GLShader_shadowFill( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_shadowFill::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_shadowFill::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ColorMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ColorMap" ), 0 );
 }
 
 GLShader_reflection::GLShader_reflection( GLShaderManager *manager ):
@@ -2677,11 +2814,11 @@ GLShader_reflection::GLShader_reflection( GLShaderManager *manager ):
 {
 }
 
-void GLShader_reflection::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_reflection::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ColorMap" ), 0 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_NormalMap" ), 1 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_HeightMap" ), 15 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ColorMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_NormalMap" ), 1 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_HeightMap" ), 15 );
 }
 
 GLShader_reflectionMaterial::GLShader_reflectionMaterial( GLShaderManager* manager ) :
@@ -2702,10 +2839,10 @@ GLShader_reflectionMaterial::GLShader_reflectionMaterial( GLShaderManager* manag
 	GLCompileMacro_USE_RELIEF_MAPPING( this ) {
 }
 
-void GLShader_reflectionMaterial::SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ColorMap" ), 0 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_NormalMap" ), 1 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_HeightMap" ), 15 );
+void GLShader_reflectionMaterial::SetShaderProgramUniforms( ShaderProgramDescriptor* shaderProgram ) {
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ColorMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_NormalMap" ), 1 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_HeightMap" ), 15 );
 }
 
 GLShader_skybox::GLShader_skybox( GLShaderManager *manager ) :
@@ -2720,10 +2857,10 @@ GLShader_skybox::GLShader_skybox( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_skybox::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_skybox::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ColorMapCube" ), 0 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_CloudMap" ), 1 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ColorMapCube" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_CloudMap" ), 1 );
 }
 
 GLShader_skyboxMaterial::GLShader_skyboxMaterial( GLShaderManager* manager ) :
@@ -2737,9 +2874,9 @@ GLShader_skyboxMaterial::GLShader_skyboxMaterial( GLShaderManager* manager ) :
 	u_ModelViewProjectionMatrix( this )
 {}
 
-void GLShader_skyboxMaterial::SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ColorMap" ), 0 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_CloudMap" ), 1 );
+void GLShader_skyboxMaterial::SetShaderProgramUniforms( ShaderProgramDescriptor* shaderProgram ) {
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ColorMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_CloudMap" ), 1 );
 }
 
 GLShader_fogQuake3::GLShader_fogQuake3( GLShaderManager *manager ) :
@@ -2759,9 +2896,9 @@ GLShader_fogQuake3::GLShader_fogQuake3( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_fogQuake3::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_fogQuake3::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_FogMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_FogMap" ), 0 );
 }
 
 GLShader_fogQuake3Material::GLShader_fogQuake3Material( GLShaderManager* manager ) :
@@ -2776,8 +2913,8 @@ GLShader_fogQuake3Material::GLShader_fogQuake3Material( GLShaderManager* manager
 	GLDeformStage( this ) {
 }
 
-void GLShader_fogQuake3Material::SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_FogMap" ), 0 );
+void GLShader_fogQuake3Material::SetShaderProgramUniforms( ShaderProgramDescriptor* shaderProgram ) {
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_FogMap" ), 0 );
 }
 
 GLShader_fogGlobal::GLShader_fogGlobal( GLShaderManager *manager ) :
@@ -2791,10 +2928,10 @@ GLShader_fogGlobal::GLShader_fogGlobal( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_fogGlobal::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_fogGlobal::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ColorMap" ), 0 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_DepthMap" ), 1 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ColorMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_DepthMap" ), 1 );
 }
 
 GLShader_heatHaze::GLShader_heatHaze( GLShaderManager *manager ) :
@@ -2816,11 +2953,11 @@ GLShader_heatHaze::GLShader_heatHaze( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_heatHaze::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_heatHaze::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_NormalMap" ), 0 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_CurrentMap" ), 1 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_HeightMap" ), 15 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_NormalMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_CurrentMap" ), 1 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_HeightMap" ), 15 );
 }
 
 GLShader_heatHazeMaterial::GLShader_heatHazeMaterial( GLShaderManager* manager ) :
@@ -2839,10 +2976,10 @@ GLShader_heatHazeMaterial::GLShader_heatHazeMaterial( GLShaderManager* manager )
 {
 }
 
-void GLShader_heatHazeMaterial::SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_NormalMap" ), 0 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_CurrentMap" ), 1 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_HeightMap" ), 15 );
+void GLShader_heatHazeMaterial::SetShaderProgramUniforms( ShaderProgramDescriptor* shaderProgram ) {
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_NormalMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_CurrentMap" ), 1 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_HeightMap" ), 15 );
 }
 
 GLShader_screen::GLShader_screen( GLShaderManager *manager ) :
@@ -2852,9 +2989,9 @@ GLShader_screen::GLShader_screen( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_screen::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_screen::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_CurrentMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_CurrentMap" ), 0 );
 }
 
 GLShader_screenMaterial::GLShader_screenMaterial( GLShaderManager* manager ) :
@@ -2863,8 +3000,8 @@ GLShader_screenMaterial::GLShader_screenMaterial( GLShaderManager* manager ) :
 	u_ModelViewProjectionMatrix( this ) {
 }
 
-void GLShader_screenMaterial::SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_CurrentMap" ), 0 );
+void GLShader_screenMaterial::SetShaderProgramUniforms( ShaderProgramDescriptor* shaderProgram ) {
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_CurrentMap" ), 0 );
 }
 
 GLShader_portal::GLShader_portal( GLShaderManager *manager ) :
@@ -2876,9 +3013,9 @@ GLShader_portal::GLShader_portal( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_portal::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_portal::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_CurrentMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_CurrentMap" ), 0 );
 }
 
 GLShader_contrast::GLShader_contrast( GLShaderManager *manager ) :
@@ -2888,9 +3025,9 @@ GLShader_contrast::GLShader_contrast( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_contrast::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_contrast::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ColorMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ColorMap" ), 0 );
 }
 
 GLShader_cameraEffects::GLShader_cameraEffects( GLShaderManager *manager ) :
@@ -2907,10 +3044,10 @@ GLShader_cameraEffects::GLShader_cameraEffects( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_cameraEffects::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_cameraEffects::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_CurrentMap" ), 0 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ColorMap3D" ), 3 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_CurrentMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ColorMap3D" ), 3 );
 }
 
 GLShader_blur::GLShader_blur( GLShaderManager *manager ) :
@@ -2923,9 +3060,9 @@ GLShader_blur::GLShader_blur( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_blur::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_blur::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ColorMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ColorMap" ), 0 );
 }
 
 GLShader_debugShadowMap::GLShader_debugShadowMap( GLShaderManager *manager ) :
@@ -2935,9 +3072,9 @@ GLShader_debugShadowMap::GLShader_debugShadowMap( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_debugShadowMap::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_debugShadowMap::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_CurrentMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_CurrentMap" ), 0 );
 }
 
 GLShader_liquid::GLShader_liquid( GLShaderManager *manager ) :
@@ -2973,14 +3110,14 @@ GLShader_liquid::GLShader_liquid( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_liquid::SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_CurrentMap" ), 0 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_PortalMap" ), 1 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_DepthMap" ), 2 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_NormalMap" ), 3 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_LightGrid1" ), 6 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_LightGrid2" ), 7 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_HeightMap" ), 15 );
+void GLShader_liquid::SetShaderProgramUniforms( ShaderProgramDescriptor* shaderProgram ) {
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_CurrentMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_PortalMap" ), 1 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_DepthMap" ), 2 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_NormalMap" ), 3 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_LightGrid1" ), 6 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_LightGrid2" ), 7 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_HeightMap" ), 15 );
 }
 
 GLShader_liquidMaterial::GLShader_liquidMaterial( GLShaderManager* manager ) :
@@ -3016,15 +3153,15 @@ GLShader_liquidMaterial::GLShader_liquidMaterial( GLShaderManager* manager ) :
 	GLCompileMacro_USE_RELIEF_MAPPING( this ) {
 }
 
-void GLShader_liquidMaterial::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_liquidMaterial::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_CurrentMap" ), 0 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_PortalMap" ), 1 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_DepthMap" ), 2 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_NormalMap" ), 3 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_LightGrid1" ), 6 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_LightGrid2" ), 7 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_HeightMap" ), 15 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_CurrentMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_PortalMap" ), 1 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_DepthMap" ), 2 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_NormalMap" ), 3 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_LightGrid1" ), 6 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_LightGrid2" ), 7 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_HeightMap" ), 15 );
 }
 
 GLShader_motionblur::GLShader_motionblur( GLShaderManager *manager ) :
@@ -3036,10 +3173,10 @@ GLShader_motionblur::GLShader_motionblur( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_motionblur::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_motionblur::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ColorMap" ), 0 );
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_DepthMap" ), 1 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ColorMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_DepthMap" ), 1 );
 }
 
 GLShader_ssao::GLShader_ssao( GLShaderManager *manager ) :
@@ -3051,9 +3188,9 @@ GLShader_ssao::GLShader_ssao( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_ssao::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_ssao::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_DepthMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_DepthMap" ), 0 );
 }
 
 GLShader_depthtile1::GLShader_depthtile1( GLShaderManager *manager ) :
@@ -3064,9 +3201,9 @@ GLShader_depthtile1::GLShader_depthtile1( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_depthtile1::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_depthtile1::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_DepthMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_DepthMap" ), 0 );
 }
 
 GLShader_depthtile2::GLShader_depthtile2( GLShaderManager *manager ) :
@@ -3076,9 +3213,9 @@ GLShader_depthtile2::GLShader_depthtile2( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_depthtile2::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_depthtile2::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_DepthMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_DepthMap" ), 0 );
 }
 
 GLShader_lighttile::GLShader_lighttile( GLShaderManager *manager ) :
@@ -3092,12 +3229,12 @@ GLShader_lighttile::GLShader_lighttile( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_lighttile::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_lighttile::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_DepthMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_DepthMap" ), 0 );
 
 	if( !glConfig2.uniformBufferObjectAvailable ) {
-		glUniform1i( glGetUniformLocation( shaderProgram->program, "u_Lights" ), 1 );
+		glUniform1i( glGetUniformLocation( shaderProgram->id, "u_Lights" ), 1 );
 	}
 }
 
@@ -3108,9 +3245,9 @@ GLShader_fxaa::GLShader_fxaa( GLShaderManager *manager ) :
 {
 }
 
-void GLShader_fxaa::SetShaderProgramUniforms( shaderProgram_t *shaderProgram )
+void GLShader_fxaa::SetShaderProgramUniforms( ShaderProgramDescriptor *shaderProgram )
 {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "u_ColorMap" ), 0 );
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "u_ColorMap" ), 0 );
 }
 
 GLShader_cull::GLShader_cull( GLShaderManager* manager ) :
@@ -3139,8 +3276,8 @@ GLShader_depthReduction::GLShader_depthReduction( GLShaderManager* manager ) :
 	u_InitialDepthLevel( this ) {
 }
 
-void GLShader_depthReduction::SetShaderProgramUniforms( shaderProgram_t* shaderProgram ) {
-	glUniform1i( glGetUniformLocation( shaderProgram->program, "depthTextureInitial" ), 0 );
+void GLShader_depthReduction::SetShaderProgramUniforms( ShaderProgramDescriptor* shaderProgram ) {
+	glUniform1i( glGetUniformLocation( shaderProgram->id, "depthTextureInitial" ), 0 );
 }
 
 GLShader_clearSurfaces::GLShader_clearSurfaces( GLShaderManager* manager ) :
